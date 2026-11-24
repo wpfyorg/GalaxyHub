@@ -303,6 +303,7 @@ public final class BudsController: ObservableObject {
         addLog(.init(direction: .info, name: "Connected",
                       summary: "\(info.name) · \(info.serviceName)"))
         handshake()
+        restoreSavedValuesIfNeeded()
         configureReconnectTimer()
         let generation = connectionGeneration
         DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
