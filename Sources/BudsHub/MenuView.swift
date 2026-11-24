@@ -270,11 +270,12 @@ struct MenuView: View {
                             .buttonStyle(.plain)
                             Spacer(minLength: 0)
                             Button("Connect") {
-                                if !selectedAddress.isEmpty { buds.connect(address: selectedAddress) }
+                                guard selectedAddressIsValid else { return }
+                                buds.connect(address: selectedAddress)
                             }
                             .buttonStyle(.glassProminent)
                             .controlSize(.small)
-                            .disabled(selectedAddress.isEmpty || buds.link == .connecting)
+                            .disabled(!selectedAddressIsValid || buds.link == .connecting)
                         }
                         Button("Refresh devices") { refreshDevices() }
                             .buttonStyle(.plain)
@@ -306,14 +307,20 @@ struct MenuView: View {
             let found = IOBluetoothTransport.discoverBudsDevices()
             DispatchQueue.main.async {
                 devices = found
-                if selectedAddress.isEmpty {
-                    selectedAddress = buds.address
-                        ?? SettingsStore.shared.lastAddress
-                        ?? devices.first?.address
-                        ?? ""
+                let wanted = selectedAddress.isEmpty
+                    ? (buds.address ?? SettingsStore.shared.lastAddress)
+                    : selectedAddress
+                if let wanted, found.contains(where: { $0.address == wanted }) {
+                    selectedAddress = wanted
+                } else {
+                    selectedAddress = found.first?.address ?? ""
                 }
             }
         }
+    }
+
+    private var selectedAddressIsValid: Bool {
+        !selectedAddress.isEmpty && devices.contains { $0.address == selectedAddress }
     }
 
     private func openSettings() {

@@ -317,7 +317,7 @@ private struct DeveloperSettings: View {
                         .font(.body.monospaced())
                     Button("Send") { send() }
                         .buttonStyle(.glassProminent)
-                        .disabled(UInt8(Hex.clean(commandHex), radix: 16) == nil
+                        .disabled(!Hex.isValidID(commandHex)
                                   || !Hex.isComplete(payloadHex)
                                   || buds.link != .connected)
                 }
@@ -397,8 +397,8 @@ private struct DeveloperSettings: View {
     }
 
     private func send() {
-        guard Hex.isComplete(payloadHex),
-              let id = UInt8(Hex.clean(commandHex), radix: 16) else { return }
+        guard Hex.isValidID(commandHex), Hex.isComplete(payloadHex),
+              let id = UInt8(Hex.digits(commandHex), radix: 16) else { return }
         buds.sendRaw(id: id, payload: Hex.bytes(payloadHex))
     }
 }
@@ -501,20 +501,30 @@ private struct AboutSettings: View {
 }
 
 enum Hex {
-    static func clean(_ text: String) -> String {
-        text.filter(\.isHexDigit)
+    /// Hex digits after removing whitespace and common separators.
+    static func digits(_ text: String) -> String {
+        text.filter { !$0.isWhitespace && $0 != ":" && $0 != "-" && $0 != "," }
+    }
+
+    /// Reject anything that isn't an ASCII hex digit or an allowed separator.
+    static func isValid(_ text: String) -> Bool {
+        digits(text).allSatisfy { $0.isASCII && $0.isHexDigit }
+    }
+
+    static func isValidID(_ text: String) -> Bool {
+        isValid(text) && (1...2).contains(digits(text).count)
     }
 
     static func bytes(_ text: String) -> [UInt8] {
-        let digits = Array(clean(text))
+        let digits = Array(digits(text))
         guard isComplete(text) else { return [] }
         return stride(from: 0, to: digits.count, by: 2).compactMap {
             UInt8(String(digits[$0...$0 + 1]), radix: 16)
         }
     }
 
-    /// True when the text contains complete bytes (an even number of hex digits).
+    /// True when the text is valid hex with complete bytes (an even digit count).
     static func isComplete(_ text: String) -> Bool {
-        clean(text).count % 2 == 0
+        isValid(text) && digits(text).count % 2 == 0
     }
 }

@@ -109,7 +109,7 @@ final class HotKeyCenter {
     @discardableResult
     func register(id: UInt32, shortcut: Shortcut, action: @escaping () -> Void) -> Bool {
         unregister(id: id)
-        installHandler()
+        guard installHandler() else { return false }
         var ref: EventHotKeyRef?
         let hotKeyID = EventHotKeyID(signature: OSType(0x4255_4448), id: id) // 'BUDH'
         let status = RegisterEventHotKey(shortcut.keyCode, shortcut.carbonModifiers, hotKeyID,
@@ -129,18 +129,21 @@ final class HotKeyCenter {
         for id in refs.keys { unregister(id: id) }
     }
 
-    private func installHandler() {
-        guard !handlerInstalled else { return }
-        handlerInstalled = true
+    @discardableResult
+    private func installHandler() -> Bool {
+        guard !handlerInstalled else { return true }
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
                                  eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
+        let status = InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
             var hotKeyID = EventHotKeyID()
             GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
                               nil, MemoryLayout<EventHotKeyID>.size, nil, &hotKeyID)
             DispatchQueue.main.async { HotKeyCenter.shared.handlers[hotKeyID.id]?() }
             return noErr
         }, 1, &spec, nil, nil)
+        guard status == noErr else { return false }
+        handlerInstalled = true
+        return true
     }
 }
 

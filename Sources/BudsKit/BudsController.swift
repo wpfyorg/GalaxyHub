@@ -120,6 +120,7 @@ public final class BudsController: ObservableObject {
     private var pendingModelOverride: DeviceModel?
     private var packetCount = 0
     private var framesSinceConnect = 0
+    private var sawStatusSinceConnect = false
     private var connectionGeneration = 0
     private var fitTestGeneration = 0
 
@@ -191,11 +192,13 @@ public final class BudsController: ObservableObject {
         didApplySaved = false
         frameBuffer.removeAll()
         framesSinceConnect = 0
+        sawStatusSinceConnect = false
         connectionGeneration += 1
         let generation = connectionGeneration
         pendingConnectAddress = address
         pendingModelOverride = modelOverride
         isDemo = demo
+        self.address = address
         if !demo { store.lastAddress = address }
         resetSessionState()
 
@@ -351,7 +354,8 @@ public final class BudsController: ObservableObject {
     }
 
     private func restoreSavedValuesIfNeeded() {
-        guard rememberSettings, !didApplySaved, link == .connected, model != nil, let address else { return }
+        guard rememberSettings, !didApplySaved, sawStatusSinceConnect,
+              link == .connected, model != nil, let address else { return }
         let saved = store.state(for: address)
         if let raw = saved.noiseMode, let mode = NoiseMode(rawValue: raw), mode != noiseMode, availableNoiseModes.contains(mode) {
             setNoiseMode(mode, persist: false)
@@ -363,7 +367,7 @@ public final class BudsController: ObservableObject {
             setAmbientVolume(volume, persist: false)
         }
         if saved.eqEnabled == true, saved.eqPreset == Self.customPresetIndex,
-           let bands = saved.customEQBands, bands.count == 9 {
+           has(.customEqualizer), let bands = saved.customEQBands, bands.count == 9 {
             // Re-push the custom table first; never send a built-in preset in
             // between, which would be briefly audible.
             send(Commands.customEqualizer(bands: bands))
@@ -428,11 +432,11 @@ public final class BudsController: ObservableObject {
 
     private func receive(_ bytes: [UInt8]) {
         lastPacketAt = Date()
-        framesSinceConnect += 1
         frameBuffer.append(contentsOf: bytes)
         let style: FrameStyle = model?.frameStyle
             ?? (bytes.contains(0xFE) && !bytes.contains(0xFD) ? .legacy : .modern)
         let frames = SPPCodec.extractFrames(from: &frameBuffer, style: style)
+        if !frames.isEmpty { framesSinceConnect += frames.count }
         for frame in frames { handle(frame) }
     }
 
@@ -444,6 +448,7 @@ public final class BudsController: ObservableObject {
         switch frame.id {
         case MsgID.extendedStatusUpdated, MsgID.statusUpdated:
             if let state = StatusParser.parse(frame: frame, model: model ?? DeviceCatalog.model(for: .buds3Pro)) {
+                sawStatusSinceConnect = true
                 apply(state)
                 if !didHandshake { handshake() }
                 restoreSavedValuesIfNeeded()
@@ -721,6 +726,7 @@ public final class BudsController: ObservableObject {
 
     public func setNoiseMode(_ mode: NoiseMode, persist: Bool = true) {
         guard model != nil else { return }
+        guard mode == .off || availableNoiseModes.contains(mode) else { return }
         if has(.noiseControl) {
             send(Commands.noiseMode(mode))
         } else if mode == .ambient {
@@ -1010,10 +1016,12 @@ public final class BudsController: ObservableObject {
         guard has(.fitTest) else { return }
         fitTestGeneration += 1
         let generation = fitTestGeneration
+        let connection = connectionGeneration
         fitResult = nil
         send(Commands.fitTest(true))
         DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
-            guard let self, generation == self.fitTestGeneration else { return }
+            guard let self, generation == self.fitTestGeneration,
+                  connection == self.connectionGeneration, self.link == .connected else { return }
             self.send(Commands.fitTest(false))
         }
     }
