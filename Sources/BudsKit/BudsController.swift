@@ -690,7 +690,11 @@ public final class BudsController: ObservableObject {
     // MARK: Sending
 
     private func send(_ frame: SPPFrame, log: Bool = true) {
-        let bytes = SPPCodec.encode(id: frame.id, payload: frame.payload, style: frameStyle)
+        guard let bytes = SPPCodec.encode(id: frame.id, payload: frame.payload, style: frameStyle) else {
+            addLog(.init(direction: .info, name: "Frame too large",
+                         summary: "\(frame.payload.count) bytes exceeds the \(frameStyle.rawValue) limit"))
+            return
+        }
         if log {
             addLog(.init(direction: .sent, name: MsgID.name(frame.id), hex: bytes.hexString,
                          summary: frame.payload.isEmpty ? "" : "\(frame.payload.count) bytes"))

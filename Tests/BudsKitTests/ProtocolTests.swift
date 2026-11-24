@@ -5,13 +5,13 @@ private func bytes(_ hex: String) -> [UInt8] {
     hex.split(separator: " ").compactMap { UInt8($0, radix: 16) }
 }
 
-@Test func goldenNoiseAmbientFrame() {
-    let encoded = SPPCodec.encode(id: MsgID.noiseControls, payload: [2], style: .modern)
+@Test func goldenNoiseAmbientFrame() throws {
+    let encoded = try #require(SPPCodec.encode(id: MsgID.noiseControls, payload: [2], style: .modern))
     #expect(encoded.hexString == "fd 04 00 78 02 b2 a1 dd")
 }
 
-@Test func goldenManagerInfoFrame() {
-    let encoded = SPPCodec.encode(id: MsgID.managerInfo, payload: [1, 1, 34], style: .modern)
+@Test func goldenManagerInfoFrame() throws {
+    let encoded = try #require(SPPCodec.encode(id: MsgID.managerInfo, payload: [1, 1, 34], style: .modern))
     #expect(encoded.hexString == "fd 06 00 88 01 01 22 da 58 dd")
 }
 
@@ -70,8 +70,8 @@ private func bytes(_ hex: String) -> [UInt8] {
     #expect(eq?.bands == [-1, -3, 0])
 }
 
-@Test func legacyRoundTrip() {
-    let encoded = SPPCodec.encode(id: MsgID.equalizer, payload: [1, 5], style: .legacy)
+@Test func legacyRoundTrip() throws {
+    let encoded = try #require(SPPCodec.encode(id: MsgID.equalizer, payload: [1, 5], style: .legacy))
     let frame = SPPCodec.decodeSingle(encoded, style: .legacy)
     #expect(frame?.id == MsgID.equalizer)
     #expect(frame?.payload == [1, 5])
@@ -112,4 +112,12 @@ private func bytes(_ hex: String) -> [UInt8] {
     controller.setANCLevelHigh(false)
     #expect(controller.ancLevelHigh == false)
     controller.disconnect()
+}
+
+
+@Test func frameSizeLimits() {
+    #expect(SPPCodec.encode(id: 1, payload: [UInt8](repeating: 0, count: 1020), style: .modern) != nil)
+    #expect(SPPCodec.encode(id: 1, payload: [UInt8](repeating: 0, count: 1021), style: .modern) == nil)
+    #expect(SPPCodec.encode(id: 1, payload: [UInt8](repeating: 0, count: 252), style: .legacy) != nil)
+    #expect(SPPCodec.encode(id: 1, payload: [UInt8](repeating: 0, count: 253), style: .legacy) == nil)
 }

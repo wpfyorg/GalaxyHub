@@ -84,7 +84,10 @@ public final class DemoTransport: BudsLink {
     }
 
     private func emit(id: UInt8, payload: [UInt8]) {
-        let frame = SPPCodec.encode(id: id, payload: payload, style: .modern, response: true)
+        guard let frame = SPPCodec.encode(id: id, payload: payload, style: .modern, response: true) else {
+            onLog?("Demo: dropped oversized \(MsgID.name(id)) frame")
+            return
+        }
         onData?(frame)
     }
 

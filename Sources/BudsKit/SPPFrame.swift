@@ -35,16 +35,26 @@ public struct SPPFrame: Equatable, Sendable {
 public enum SPPCodec {
     public static let modernMaxPayload = 1024
 
+    /// Maximum payload for each header format. The modern size field is
+    /// 10 bits and counts message ID + payload + CRC; the legacy size field is
+    /// one byte. Fragmentation is not implemented, so larger frames are refused
+    /// rather than encoded with a wrapped length.
+    public static func maxPayload(for style: FrameStyle) -> Int {
+        style == .legacy ? 252 : 1020
+    }
+
     /// Encodes a request. Samsung's own clients send requests with the direction bit clear.
-    public static func encode(id: UInt8, payload: [UInt8], style: FrameStyle, response: Bool = false) -> [UInt8] {
+    /// Returns nil when the payload cannot fit the selected frame format.
+    public static func encode(id: UInt8, payload: [UInt8], style: FrameStyle, response: Bool = false) -> [UInt8]? {
+        guard payload.count <= maxPayload(for: style) else { return nil }
         let body = [id] + payload
         let crc = CRC16.wireBytes(body)
         switch style {
         case .legacy:
-            let size = UInt8(clamping: body.count + crc.count)
+            let size = UInt8(body.count + crc.count)
             return [style.som, response ? 1 : 0, size, id] + payload + crc + [style.eom]
         case .modern:
-            var header = UInt16(body.count + crc.count) & 0x03FF
+            var header = UInt16(body.count + crc.count)
             if response { header |= 0x1000 }
             return [style.som, UInt8(header & 0xFF), UInt8((header >> 8) & 0xFF), id] + payload + crc + [style.eom]
         }
