@@ -260,6 +260,7 @@ public final class BudsController: ObservableObject {
     }
 
     public func disconnect() {
+        let wasDemo = isDemo
         userDisconnected = true
         connectionGeneration += 1
         connectWatchdog?.cancel()
@@ -271,6 +272,11 @@ public final class BudsController: ObservableObject {
         link = .idle
         findMyBudsActive = false
         pendingConnectAddress = nil
+        if wasDemo {
+            isDemo = false
+            address = nil
+            deviceName = "Galaxy Buds"
+        }
         addLog(.init(direction: .info, name: "Disconnected"))
     }
 
