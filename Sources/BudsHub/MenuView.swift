@@ -10,6 +10,7 @@ struct MenuView: View {
     @State private var devices: [(address: String, name: String, model: DeviceModel?, connected: Bool)] = []
     @State private var selectedAddress = ""
     @State private var refreshGeneration = 0
+    @State private var refreshHovered = false
 
     init(model: AppModel) {
         self.model = model
@@ -235,17 +236,25 @@ struct MenuView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     if devices.isEmpty {
-                        Text("Pair your Galaxy Buds in System Settings › Bluetooth, then come back here.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Button("Open Bluetooth Settings") {
-                            if let url = URL(string: "x-apple.systempreferences:com.apple.Bluetooth") {
-                                NSWorkspace.shared.open(url)
+                        VStack(spacing: 10) {
+                            Image(systemName: "earbuds")
+                                .font(.system(size: 26, weight: .light))
+                                .foregroundStyle(.tertiary)
+                            Text("Pair your Galaxy Buds in System Settings › Bluetooth, then come back here.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Button("Open Bluetooth Settings") {
+                                if let url = URL(string: "x-apple.systempreferences:com.apple.Bluetooth") {
+                                    NSWorkspace.shared.open(url)
+                                }
                             }
+                            .buttonStyle(.glassProminent)
+                            .controlSize(.small)
                         }
-                        .buttonStyle(.glass)
-                        .controlSize(.small)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
                     } else {
                         HStack(spacing: 6) {
                             Menu {
@@ -283,10 +292,22 @@ struct MenuView: View {
                             .controlSize(.small)
                             .disabled(!selectedAddressIsValid || buds.link == .connecting)
                         }
-                        Button("Refresh devices") { refreshDevices() }
-                            .buttonStyle(.plain)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        Button {
+                            refreshDevices()
+                        } label: {
+                            Text("Refresh devices")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background {
+                                    Capsule().fill(Color.primary.opacity(refreshHovered ? 0.06 : 0))
+                                }
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .onHover { refreshHovered = $0 }
+                        .animation(.easeOut(duration: 0.12), value: refreshHovered)
                     }
                 }
                 .padding(10)
@@ -294,16 +315,18 @@ struct MenuView: View {
                 .roundedRectGlass(cornerRadius: 14)
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: 12) {
                 Button("Try demo") { buds.connectDemo() }
-                    .buttonStyle(.glass)
-                    .controlSize(.small)
+                    .buttonStyle(.plain)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                 if buds.address != nil {
                     Button("Retry") { buds.reconnect() }
-                        .buttonStyle(.glass)
-                        .controlSize(.small)
+                        .buttonStyle(.plain)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                Spacer()
+                Spacer(minLength: 0)
             }
         }
     }
