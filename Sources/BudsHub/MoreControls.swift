@@ -22,14 +22,7 @@ private final class AudioSourceModel: ObservableObject {
 
     func refresh() {
         guard let controller else { return }
-        guard let output = MacAudioRouter.defaultOutputName else {
-            macIsSource = false
-            return
-        }
-        let names = [controller.deviceName, controller.model?.displayName]
-            .compactMap { $0 }
-            .filter { !$0.isEmpty }
-        macIsSource = names.contains { output.localizedCaseInsensitiveContains($0) }
+        macIsSource = MacAudioRouter.isDefaultOutput(address: controller.address)
     }
 
     deinit {

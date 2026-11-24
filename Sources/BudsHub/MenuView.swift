@@ -9,6 +9,7 @@ struct MenuView: View {
     @AppStorage("moreExpanded") private var moreExpanded = false
     @State private var devices: [(address: String, name: String, model: DeviceModel?, connected: Bool)] = []
     @State private var selectedAddress = ""
+    @State private var refreshGeneration = 0
 
     init(model: AppModel) {
         self.model = model
@@ -308,9 +309,12 @@ struct MenuView: View {
     }
 
     private func refreshDevices() {
+        refreshGeneration += 1
+        let generation = refreshGeneration
         DispatchQueue.global(qos: .userInitiated).async {
             let found = IOBluetoothTransport.discoverBudsDevices()
             DispatchQueue.main.async {
+                guard generation == refreshGeneration else { return }
                 devices = found
                 let wanted = selectedAddress.isEmpty
                     ? (buds.address ?? SettingsStore.shared.lastAddress)

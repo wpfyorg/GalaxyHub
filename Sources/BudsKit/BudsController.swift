@@ -531,7 +531,9 @@ public final class BudsController: ObservableObject {
             }
         case MsgID.customEqualizerRecv:
             if let data = PayloadParser.parseCustomEQ(frame.payload) {
-                customEQBands = data.bands
+                // The UI indexes nine bands; a malformed table must never
+                // replace the array with a different length.
+                customEQBands = Self.nineBands(data.bands)
                 customEQBandsFromDevice = true
             }
         case MsgID.multipointInfo:
@@ -919,6 +921,13 @@ public final class BudsController: ObservableObject {
                 $0.customEQBands = values
             }
         }
+    }
+
+    private static func nineBands(_ bands: [Int]) -> [Int] {
+        guard !bands.isEmpty else { return Array(repeating: 0, count: 9) }
+        var values = Array(bands.prefix(9))
+        if values.count < 9 { values += Array(repeating: 0, count: 9 - values.count) }
+        return values.map { max(-10, min(10, $0)) }
     }
 
     public func updateCustomEQBands(_ bands: [Int]) {

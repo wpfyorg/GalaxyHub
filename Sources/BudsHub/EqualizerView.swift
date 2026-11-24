@@ -27,7 +27,7 @@ struct EqualizerCard: View {
                         chip("Custom", selected: buds.eqSelection == .custom || editingCustom) {
                             editingCustom = true
                             if draft == Array(repeating: 0, count: 9) {
-                                draft = buds.customEQBands
+                                draft = incomingBands
                             }
                         }
                     }
@@ -43,6 +43,7 @@ struct EqualizerCard: View {
                                     .foregroundStyle(draft[index] == 0 ? .secondary : .primary)
                                 BandSlider(value: draft[index], range: -10...10) { value in
                                     draft[index] = value
+                                    editingCustom = true
                                 }
                                 .frame(height: 64)
                                 .accessibilityLabel("\(bandLabels[index]) hertz")
@@ -50,6 +51,7 @@ struct EqualizerCard: View {
                                 .accessibilityAdjustableAction { direction in
                                     let delta = direction == .increment ? 1 : -1
                                     draft[index] = min(10, max(-10, draft[index] + delta))
+                                    editingCustom = true
                                 }
                                 Text(bandLabels[index])
                                     .font(.system(size: 10))
@@ -73,17 +75,26 @@ struct EqualizerCard: View {
                     .font(.callout)
                 }
             }
-            .onAppear { draft = buds.customEQBands }
+            .onAppear { draft = incomingBands }
             .onChange(of: buds.customEQBands) { _, bands in
-                if !editingCustom { draft = bands }
+                if !editingCustom { draft = Self.normalized(bands) }
             }
             .onChange(of: buds.eqSelection) { _, selection in
                 if case .custom = selection {
                     editingCustom = true
-                    draft = buds.customEQBands
+                    draft = incomingBands
                 }
             }
         }
+    }
+
+    private var incomingBands: [Int] {
+        Self.normalized(buds.customEQBands)
+    }
+
+    private static func normalized(_ bands: [Int]) -> [Int] {
+        guard bands.count == 9 else { return Array(repeating: 0, count: 9) }
+        return bands
     }
 
     private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {

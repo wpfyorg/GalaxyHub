@@ -60,6 +60,7 @@ final class AppModel: ObservableObject {
     }
 
     func perform(_ action: ShortcutAction) {
+        guard controller.link == .connected else { return }
         switch action {
         case .cycle:
             controller.cycleNoiseMode()

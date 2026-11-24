@@ -63,7 +63,7 @@ public enum MacAudioRouter {
                                           UInt32(MemoryLayout<AudioDeviceID>.size), &device) == noErr
     }
 
-    public static var defaultOutputName: String? {
+    public static var defaultOutputID: AudioDeviceID? {
         var device: AudioDeviceID = 0
         var size = UInt32(MemoryLayout<AudioDeviceID>.size)
         var address = AudioObjectPropertyAddress(
@@ -73,7 +73,22 @@ public enum MacAudioRouter {
         guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device) == noErr else {
             return nil
         }
+        return device
+    }
+
+    public static var defaultOutputName: String? {
+        guard let device = defaultOutputID else { return nil }
         return name(of: device)
+    }
+
+    /// True when the system default output is the buds identified by their
+    /// Bluetooth address. Comparing device identity avoids mistaking another
+    /// pair with a similar name for the controlled earbuds.
+    public static func isDefaultOutput(address: String?) -> Bool {
+        guard let address else { return false }
+        let uid = address.replacingOccurrences(of: ":", with: "-").uppercased() + ":output"
+        guard let target = device(forUID: uid), let current = defaultOutputID else { return false }
+        return current == target
     }
 
     /// Selects the buds as the default output and holds a silent A2DP stream for
@@ -243,7 +258,7 @@ public final class DefaultOutputObserver {
             mSelector: kAudioHardwarePropertyDefaultOutputDevice,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain)
-        withUnsafePointer(to: &address) { pointer in
+        _ = withUnsafePointer(to: &address) { pointer in
             AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), pointer, queue, listener)
         }
         self.listener = nil
