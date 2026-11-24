@@ -59,10 +59,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 private struct MenuBarLabel: View {
     @ObservedObject var controller: BudsController
+    @AppStorage("menuBarBattery") private var showBattery = true
 
     var body: some View {
         Image(nsImage: MenuBarIcon.image(
-            level: controller.link == .connected ? controller.batteryMin : nil,
+            level: controller.link == .connected && showBattery ? controller.batteryMin : nil,
             connected: controller.link == .connected
         ))
     }
