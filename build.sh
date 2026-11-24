@@ -3,10 +3,11 @@
 set -euo pipefail
 cd "${0:A:h}"
 
-# macOS 26.5 SDK is used because the current Command Line Tools 27 SDK ships
-# SwiftUI as macros without the SwiftUIMacros host plugin. Full Xcode users can
-# delete this line and use their default SDK.
-if [[ -d /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk ]]; then
+# macOS 26.5 SDK is used only with Command Line Tools: the CLT 27 SDK ships
+# SwiftUI as macros without the SwiftUIMacros host plugin. Full Xcode keeps its
+# own selected SDK even when the CLT SDK directory exists.
+DEVELOPER_DIR_PATH="$(xcode-select -p 2>/dev/null || true)"
+if [[ "$DEVELOPER_DIR_PATH" == *"CommandLineTools"* ]] && [[ -d /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk ]]; then
     export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk
 fi
 

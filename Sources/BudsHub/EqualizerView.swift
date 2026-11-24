@@ -4,7 +4,12 @@ import BudsKit
 struct EqualizerCard: View {
     @ObservedObject var buds: BudsController
     @State private var draft: [Int] = Array(repeating: 0, count: 9)
-    @State private var editingCustom = false
+    /// Visibility of the custom band editor, separate from whether the user
+    /// has actually changed the curve.
+    @State private var showCustomEditor = false
+    /// True only after a slider/Reset edit; incoming device tables are ignored
+    /// while the draft is dirty.
+    @State private var draftDirty = false
 
     private let bandLabels = ["60", "120", "250", "500", "1k", "2k", "4k", "8k", "12k"]
     private let columns = [GridItem(.adaptive(minimum: 66), spacing: 6)]
@@ -13,27 +18,28 @@ struct EqualizerCard: View {
         Card(title: "Equalizer", symbol: "slider.vertical.3") {
             VStack(alignment: .leading, spacing: 10) {
                 LazyVGrid(columns: columns, spacing: 6) {
-                    chip("Off", selected: buds.eqSelection == .off && !editingCustom) {
-                        buds.setEQOff(); editingCustom = false
+                    chip("Off", selected: buds.eqSelection == .off && !showCustomEditor) {
+                        buds.setEQOff()
+                        showCustomEditor = false
+                        draftDirty = false
                     }
                     ForEach(0..<BudsController.presetNames.count, id: \.self) { index in
                         chip(BudsController.presetNames[index],
-                             selected: buds.eqSelection == .preset(index) && !editingCustom) {
+                             selected: buds.eqSelection == .preset(index) && !showCustomEditor) {
                             buds.selectEQPreset(index)
-                            editingCustom = false
+                            showCustomEditor = false
+                            draftDirty = false
                         }
                     }
                     if buds.has(.customEqualizer) {
-                        chip("Custom", selected: buds.eqSelection == .custom || editingCustom) {
-                            editingCustom = true
-                            if draft == Array(repeating: 0, count: 9) {
-                                draft = incomingBands
-                            }
+                        chip("Custom", selected: buds.eqSelection == .custom || showCustomEditor) {
+                            showCustomEditor = true
+                            if !draftDirty { draft = incomingBands }
                         }
                     }
                 }
 
-                if buds.has(.customEqualizer) && (editingCustom || buds.eqSelection == .custom) {
+                if buds.has(.customEqualizer) && (showCustomEditor || buds.eqSelection == .custom) {
                     Divider().opacity(0.5)
                     HStack(spacing: 4) {
                         ForEach(0..<9, id: \.self) { index in
@@ -43,7 +49,7 @@ struct EqualizerCard: View {
                                     .foregroundStyle(draft[index] == 0 ? .secondary : .primary)
                                 BandSlider(value: draft[index], range: -10...10) { value in
                                     draft[index] = value
-                                    editingCustom = true
+                                    draftDirty = true
                                 }
                                 .frame(height: 64)
                                 .accessibilityLabel("\(bandLabels[index]) hertz")
@@ -51,7 +57,7 @@ struct EqualizerCard: View {
                                 .accessibilityAdjustableAction { direction in
                                     let delta = direction == .increment ? 1 : -1
                                     draft[index] = min(10, max(-10, draft[index] + delta))
-                                    editingCustom = true
+                                    draftDirty = true
                                 }
                                 Text(bandLabels[index])
                                     .font(.system(size: 10))
@@ -63,14 +69,15 @@ struct EqualizerCard: View {
                     HStack(spacing: 8) {
                         Button("Reset") {
                             draft = Array(repeating: 0, count: 9)
-                            editingCustom = true
+                            draftDirty = true
                         }
                         .buttonStyle(.glass)
                         .controlSize(.small)
                         Spacer()
                         Button("Apply") {
                             buds.applyCustomEQ(bands: draft)
-                            editingCustom = false
+                            draftDirty = false
+                            showCustomEditor = false
                         }
                         .buttonStyle(.glassProminent)
                         .controlSize(.small)
@@ -78,15 +85,18 @@ struct EqualizerCard: View {
                     .font(.callout)
                 }
             }
-            .onAppear { draft = incomingBands }
+            .onAppear {
+                draft = incomingBands
+                showCustomEditor = buds.eqSelection == .custom
+                draftDirty = false
+            }
             .onChange(of: buds.customEQBands) { _, bands in
-                if !editingCustom { draft = Self.normalized(bands) }
+                if !draftDirty { draft = Self.normalized(bands) }
             }
             .onChange(of: buds.eqSelection) { _, selection in
-                // A device-reported custom selection must not block the later
-                // custom-EQ table from arriving; only user edits set the flag.
                 if case .custom = selection {
-                    draft = incomingBands
+                    showCustomEditor = true
+                    if !draftDirty { draft = incomingBands }
                 }
             }
         }
