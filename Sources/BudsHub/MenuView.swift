@@ -292,23 +292,8 @@ struct MenuView: View {
                             .controlSize(.small)
                             .disabled(!selectedAddressIsValid || buds.link == .connecting)
                         }
-                        Button {
-                            refreshDevices()
-                        } label: {
-                            Text("Refresh devices")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background {
-                                    Capsule().fill(Color.primary.opacity(refreshHovered ? 0.06 : 0))
-                                }
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .onHover { refreshHovered = $0 }
-                        .animation(.easeOut(duration: 0.12), value: refreshHovered)
                     }
+                    refreshButton
                 }
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -329,6 +314,25 @@ struct MenuView: View {
                 Spacer(minLength: 0)
             }
         }
+    }
+
+    private var refreshButton: some View {
+        Button {
+            refreshDevices()
+        } label: {
+            Text("Refresh devices")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background {
+                    Capsule().fill(Color.primary.opacity(refreshHovered ? 0.06 : 0))
+                }
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .onHover { refreshHovered = $0 }
+        .animation(.easeOut(duration: 0.12), value: refreshHovered)
     }
 
     private func refreshDevices() {

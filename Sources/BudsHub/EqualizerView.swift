@@ -61,9 +61,12 @@ struct EqualizerCard: View {
                         }
                     }
                     HStack(spacing: 8) {
-                        Button("Reset") { draft = Array(repeating: 0, count: 9) }
-                            .buttonStyle(.glass)
-                            .controlSize(.small)
+                        Button("Reset") {
+                            draft = Array(repeating: 0, count: 9)
+                            editingCustom = true
+                        }
+                        .buttonStyle(.glass)
+                        .controlSize(.small)
                         Spacer()
                         Button("Apply") {
                             buds.applyCustomEQ(bands: draft)
@@ -80,8 +83,9 @@ struct EqualizerCard: View {
                 if !editingCustom { draft = Self.normalized(bands) }
             }
             .onChange(of: buds.eqSelection) { _, selection in
+                // A device-reported custom selection must not block the later
+                // custom-EQ table from arriving; only user edits set the flag.
                 if case .custom = selection {
-                    editingCustom = true
                     draft = incomingBands
                 }
             }

@@ -80,21 +80,31 @@ The script builds with SwiftPM, generates the icon, writes `Info.plist` and
 ad-hoc signs the bundle. macOS asks for Bluetooth permission once per re-signed
 build; approve it in the system dialog.
 
-Development with the Command Line Tools (no Xcode). A Swift 6 toolchain is
-required for the Swift Testing test target; the package itself stays in Swift 5
-language mode:
+Development requires a **Swift 6 toolchain** (the test target uses Swift Testing);
+the package itself stays in Swift 5 language mode.
+
+With full Xcode, use the default SDK:
 
 ```sh
-export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk
 swift build                 # build library + app
 swift test                  # protocol and model tests
 swift run BudsHub --demo    # run with a simulated Buds3 Pro
 swift run BudsProbe AA:BB:CC:DD:EE:FF  # hardware smoke test, prints live state
 ```
 
-The bundled Command Line Tools 27 SDK exposes SwiftUI property wrappers as macros
-without shipping the macro plugin, so `build.sh` pins the installed
-`MacOSX26.5.sdk`. With full Xcode, use the default SDK and omit `SDKROOT`.
+**Command Line Tools only:** the current CLT 27 SDK exposes SwiftUI property
+wrappers as macros but does not ship the `SwiftUIMacros` host plugin, so a plain
+`swift build` fails. Install the macOS 26.5 SDK (or use Xcode), then point
+`SDKROOT` at it for development:
+
+```sh
+export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk
+swift build && swift test
+```
+
+`build.sh` performs the same check automatically and only pins the path when
+that SDK exists; otherwise it uses the default SDK. This is a CLT-only
+workaround — skip `SDKROOT` with full Xcode.
 
 ## How it works
 
