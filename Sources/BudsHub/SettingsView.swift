@@ -100,7 +100,7 @@ private struct GeneralSettings: View {
                 Toggle("Launch at login", isOn: $model.launchAtLogin)
             } footer: {
                 Text("Launch at login works when Buds Hub is installed as an app bundle. Settings are stored per paired device.")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
@@ -280,7 +280,7 @@ private struct DevicesSettings: View {
                 Text("Paired Galaxy Buds")
             } footer: {
                 Text("Buds Hub identifies each model from its vendor service UUID, SKU and firmware. A wrong automatic match can be overridden above.")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
         }
@@ -335,7 +335,7 @@ private struct ShortcutSettings: View {
                 }
             } footer: {
                 Text("Shortcuts work in every app without Accessibility permission. Include ⌘, ⌥, ⌃ or ⇧, or use a function key. Changes apply immediately.")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
             Section {
@@ -401,7 +401,7 @@ private struct DeveloperSettings: View {
                 Text("Raw command")
             } footer: {
                 Text("Frames, checksums and model-specific headers are added automatically. Unknown commands can change earbud behaviour.")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 

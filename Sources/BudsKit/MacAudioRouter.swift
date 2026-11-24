@@ -203,3 +203,50 @@ public enum MacAudioRouter {
         return text.isEmpty ? nil : text
     }
 }
+
+/// Observes the system default output device and calls `onChange` whenever it
+/// changes. The callback runs on `queue`; callers decide where to hop next.
+public final class DefaultOutputObserver {
+    private let queue = DispatchQueue(label: "io.github.budshub.audio-route")
+    private let onChange: () -> Void
+    private var listener: AudioObjectPropertyListenerBlock?
+    private var installed = false
+
+    public init(onChange: @escaping () -> Void) {
+        self.onChange = onChange
+    }
+
+    deinit {
+        stop()
+    }
+
+    public func start() {
+        guard !installed else { return }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+            self?.onChange()
+        }
+        let status = withUnsafePointer(to: &address) { pointer in
+            AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), pointer, queue, block)
+        }
+        guard status == noErr else { return }
+        listener = block
+        installed = true
+    }
+
+    public func stop() {
+        guard installed, let listener else { return }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        withUnsafePointer(to: &address) { pointer in
+            AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), pointer, queue, listener)
+        }
+        self.listener = nil
+        installed = false
+    }
+}

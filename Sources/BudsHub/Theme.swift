@@ -103,17 +103,19 @@ struct Card<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             if let title {
-                HStack(spacing: 5) {
-                    if let symbol { Image(systemName: symbol).font(.system(size: 10, weight: .semibold)) }
-                    Text(title).font(.caption.weight(.semibold))
+                HStack(spacing: 6) {
+                    if let symbol {
+                        Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
+                    }
+                    Text(title).font(.system(size: 13, weight: .semibold))
                 }
                 .foregroundStyle(.secondary)
             }
             content()
         }
-        .padding(10)
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.05)))
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5))
@@ -127,25 +129,26 @@ struct ToggleRow: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
-                .frame(width: 18)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.caption.weight(.medium))
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.body)
                 if let subtitle {
-                    Text(subtitle).font(.caption2).foregroundStyle(.secondary)
+                    Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Spacer(minLength: 4)
+            Spacer(minLength: 6)
             Toggle("", isOn: $isOn)
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .labelsHidden()
                 .accessibilityLabel(title)
         }
+        .frame(minHeight: 30)
     }
 }
 
@@ -156,21 +159,21 @@ struct MenuRow: View {
     let onSelect: (Int) -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(title).font(.caption)
-            Spacer(minLength: 4)
+        HStack(spacing: 10) {
+            Text(title).font(.body)
+            Spacer(minLength: 6)
             Menu {
                 ForEach(options.indices, id: \.self) { index in
                     Button(options[index]) { onSelect(index) }
                 }
             } label: {
-                HStack(spacing: 4) {
-                    Text(value).font(.caption.weight(.medium)).lineLimit(1)
-                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 7, weight: .bold))
+                HStack(spacing: 5) {
+                    Text(value).font(.body.weight(.medium)).lineLimit(1)
+                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 8, weight: .bold))
                 }
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
                 .background(Capsule().fill(Color.primary.opacity(0.07)))
                 .contentShape(Capsule())
             }
@@ -179,6 +182,7 @@ struct MenuRow: View {
             .buttonStyle(.plain)
             .fixedSize()
         }
+        .frame(minHeight: 30)
     }
 }
 
@@ -189,15 +193,16 @@ struct KeyValueRow: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(key).font(.caption2).foregroundStyle(.secondary)
+            Text(key).font(.subheadline).foregroundStyle(.secondary)
             Spacer(minLength: 8)
             Text(value)
-                .font(mono ? .caption2.monospaced() : .caption2)
+                .font(mono ? .body.monospaced() : .body)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
                 .truncationMode(.middle)
                 .textSelection(.enabled)
         }
+        .frame(minHeight: 22)
     }
 }
 

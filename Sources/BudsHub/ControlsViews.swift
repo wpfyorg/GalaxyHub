@@ -9,19 +9,19 @@ struct AudioSettingsCard: View {
 
     var body: some View {
         Card(title: "Audio focus", symbol: "hifispeaker.2") {
-            VStack(spacing: 8) {
-                HStack(spacing: 8) {
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
                     Image(systemName: "arrow.left.arrow.right")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 18)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Use this Mac for audio").font(.caption.weight(.medium))
+                        .frame(width: 20)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Use this Mac for audio").font(.body.weight(.medium))
                         Text("The buds follow the last device that starts audio")
-                            .font(.caption2).foregroundStyle(.secondary)
+                            .font(.subheadline).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    Spacer(minLength: 4)
+                    Spacer(minLength: 6)
                     Button("Take audio") { buds.claimMacAudio() }
                         .buttonStyle(.glass)
                         .controlSize(.small)
@@ -32,7 +32,7 @@ struct AudioSettingsCard: View {
                           isOn: Binding(get: { buds.autoClaimAudio },
                                         set: { buds.autoClaimAudio = $0 }))
                 Text("macOS uses AAC or SBC. Samsung SSC 24-bit is only available from a Galaxy phone.")
-                    .font(.system(size: 10))
+                    .font(.subheadline)
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -45,17 +45,17 @@ struct SoundSettingsCard: View {
 
     var body: some View {
         Card(title: "Sound", symbol: "waveform") {
-            VStack(spacing: 7) {
+            VStack(spacing: 8) {
                 if buds.has(.ambientVolume), let max = buds.model?.ambientVolumeMax, max > 0 {
                     HStack(spacing: 8) {
-                        Image(systemName: "speaker.wave.1").font(.system(size: 11)).foregroundStyle(.secondary)
-                        Text("Ambient volume").font(.caption)
+                        Image(systemName: "speaker.wave.1").font(.system(size: 12)).foregroundStyle(.secondary)
+                        Text("Ambient volume").font(.body)
                         Slider(value: Binding(get: { Double(buds.ambientVolume) },
                                               set: { buds.setAmbientVolume(Int($0.rounded())) }),
                                in: 0...Double(max), step: 1)
                             .controlSize(.mini)
                         Text("\(buds.ambientVolume)/\(max)")
-                            .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                            .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                     }
                     Divider().opacity(0.5)
                 }
@@ -75,7 +75,7 @@ struct SoundSettingsCard: View {
                                 get: { buds.ambientCustomRight },
                                 set: { buds.setAmbientCustom(enabled: true, right: $0) }), in: 0...(buds.model?.ambientVolumeMax ?? 2))
                         }
-                        .font(.caption2)
+                        .font(.subheadline)
                         .controlSize(.mini)
                     }
                 }
@@ -161,21 +161,28 @@ struct GesturesSettingsCard: View {
 
     var body: some View {
         Card(title: "Gestures", symbol: "hand.tap") {
-            VStack(spacing: 7) {
+            VStack(spacing: 10) {
                 if buds.has(.touchLock) {
                     ToggleRow(title: "Lock touchpad", subtitle: "Ignore taps on both earbuds",
                               symbol: "lock",
                               isOn: Binding(get: { buds.touchLocked }, set: { buds.setTouchpadLocked($0) }))
                 }
 
+                if let model = buds.model, !model.availableTouchActions.isEmpty {
+                    if buds.has(.touchLock) { Divider().opacity(0.5) }
+                    touchActionColumns(model.availableTouchActions)
+                }
+
                 if buds.has(.advancedTouch) {
+                    Divider().opacity(0.5)
                     ToggleRow(title: "Single tap", symbol: "hand.point.up",
                               isOn: Binding(get: { buds.touchSingleTap }, set: { buds.setTouchGesture(single: $0) }))
                     ToggleRow(title: "Double tap", symbol: "hand.tap",
                               isOn: Binding(get: { buds.touchDoubleTap }, set: { buds.setTouchGesture(double: $0) }))
                     ToggleRow(title: "Triple tap", symbol: "hand.tap.fill",
                               isOn: Binding(get: { buds.touchTripleTap }, set: { buds.setTouchGesture(triple: $0) }))
-                    ToggleRow(title: "Touch and hold", symbol: "hand.point.up.left",
+                    ToggleRow(title: "Touch and hold", subtitle: "Actions are set per earbud above",
+                              symbol: "hand.point.up.left",
                               isOn: Binding(get: { buds.touchHold }, set: { buds.setTouchGesture(hold: $0) }))
                     if buds.has(.swipeGesture) {
                         ToggleRow(title: "Volume swipe", symbol: "hand.draw",
@@ -197,28 +204,68 @@ struct GesturesSettingsCard: View {
                               isOn: Binding(get: { buds.doubleTapVolume }, set: { buds.setDoubleTapVolume($0) }))
                 }
 
-                if let model = buds.model, !model.availableTouchActions.isEmpty {
-                    Divider().opacity(0.5)
-                    let actions = model.availableTouchActions
-                    MenuRow(title: "Touch & hold left", value: buds.touchLeftAction.title,
-                            options: actions.map(\.title)) { index in
-                        buds.setTouchAction(actions[index], left: true)
-                    }
-                    MenuRow(title: "Touch & hold right", value: buds.touchRightAction.title,
-                            options: actions.map(\.title)) { index in
-                        buds.setTouchAction(actions[index], left: false)
-                    }
-                }
-
                 if buds.has(.noiseControlCycle) {
                     Divider().opacity(0.5)
                     HStack {
-                        Text("Touch & hold cycles").font(.caption)
+                        Text("Touch & hold cycles").font(.body)
                         Spacer()
-                        Text(cycleDescription).font(.caption2).foregroundStyle(.secondary)
+                        Text(cycleDescription).font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
             }
+        }
+    }
+
+    private func touchActionColumns(_ actions: [TouchAction]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "hand.point.up.left")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20)
+                Text("Touch & hold").font(.body)
+                Spacer(minLength: 0)
+            }
+            HStack(alignment: .top, spacing: 10) {
+                actionColumn("Left", selection: buds.touchLeftAction, actions: actions) { index in
+                    buds.setTouchAction(actions[index], left: true)
+                }
+                actionColumn("Right", selection: buds.touchRightAction, actions: actions) { index in
+                    buds.setTouchAction(actions[index], left: false)
+                }
+            }
+        }
+    }
+
+    private func actionColumn(_ side: String, selection: TouchAction,
+                              actions: [TouchAction],
+                              onSelect: @escaping (Int) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(side).font(.subheadline).foregroundStyle(.secondary)
+            Menu {
+                ForEach(actions.indices, id: \.self) { index in
+                    Button(actions[index].title) { onSelect(index) }
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Text(selection.title)
+                        .font(.body)
+                        .lineLimit(1)
+                    Spacer(minLength: 2)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 8, weight: .bold))
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity)
+                .background(Capsule().fill(Color.primary.opacity(0.07)))
+                .contentShape(Capsule())
+            }
+            .menuStyle(.button)
+            .menuIndicator(.hidden)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Touch and hold \(side.lowercased()) action")
         }
     }
 
@@ -238,17 +285,17 @@ struct FindAndFitCard: View {
 
     var body: some View {
         Card(title: "Find & fit", symbol: "location.magnifyingglass") {
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 if buds.has(.findMyBuds) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         Image(systemName: "dot.radiowaves.left.and.right")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.secondary)
-                            .frame(width: 18)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("Find my earbuds").font(.caption.weight(.medium))
+                            .frame(width: 20)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Find my earbuds").font(.body.weight(.medium))
                             Text(buds.findMyBudsActive ? "Playing a sound…" : "Loud — take them out of your ears first")
-                                .font(.caption2).foregroundStyle(.secondary)
+                                .font(.subheadline).foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         Spacer(minLength: 4)
@@ -263,19 +310,19 @@ struct FindAndFitCard: View {
 
                 if buds.has(.fitTest) {
                     Divider().opacity(0.5)
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         Image(systemName: "checkmark.seal")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.secondary)
-                            .frame(width: 18)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("Fit test").font(.caption.weight(.medium))
+                            .frame(width: 20)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Fit test").font(.body.weight(.medium))
                             if let result = buds.fitResult {
                                 Text("Left \(fitText(result.left)) · Right \(fitText(result.right))")
-                                    .font(.caption2)
+                                    .font(.subheadline)
                                     .foregroundStyle(result.left == 1 && result.right == 1 ? .green : .secondary)
                             } else {
-                                Text("Check the seal in each ear").font(.caption2).foregroundStyle(.secondary)
+                                Text("Check the seal in each ear").font(.subheadline).foregroundStyle(.secondary)
                             }
                         }
                         Spacer(minLength: 4)
@@ -288,10 +335,10 @@ struct FindAndFitCard: View {
                 if let multipoint = buds.multipoint, multipoint.supported {
                     Divider().opacity(0.5)
                     HStack {
-                        Text("Multipoint").font(.caption)
+                        Text("Multipoint").font(.body)
                         Spacer()
                         Text(multipoint.haveDevices ? "Connected to multiple devices" : "Single device")
-                            .font(.caption2)
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -313,7 +360,7 @@ struct DeviceSettingsCard: View {
 
     var body: some View {
         Card(title: "Device", symbol: "info.circle") {
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
                 KeyValueRow(key: "Model", value: buds.model?.displayName ?? buds.detectedModel?.displayName ?? "Detecting…")
                 if let firmware = buds.deviceInfo.firmwareLeft {
                     KeyValueRow(key: "Firmware", value: firmware, mono: true)

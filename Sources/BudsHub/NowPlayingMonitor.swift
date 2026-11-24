@@ -25,7 +25,7 @@ final class NowPlayingMonitor {
     private func poll() {
         guard let controller, controller.autoClaimAudio, !inFlight else { return }
         inFlight = true
-        DispatchQueue.global(qos: .utility).async {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
             let playing = Self.nowPlaying()
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }

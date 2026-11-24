@@ -16,7 +16,7 @@ struct MenuView: View {
     }
 
     private var content: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             header
             if buds.link == .connected {
                 if !buds.availableNoiseModes.isEmpty {
@@ -25,19 +25,23 @@ struct MenuView: View {
                 batteries
                 VStack(spacing: 0) {
                     Collapsible(expanded: moreExpanded) {
-                        MoreControls(buds: buds).padding(.top, 10)
+                        MoreControls(buds: buds).padding(.top, 12)
                     }
                 }
             } else {
                 disconnected
             }
         }
-        .padding(12)
+        .padding(14)
     }
 
     var body: some View {
         GlassBox(spacing: 0) {
-            content.frame(width: 300)
+            content
+                .frame(width: MenuBarPanelSizer.contentWidth)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                    MenuBarPanelSizer.syncHeight(height)
+                }
         }
         .animation(.spring(response: 0.42, dampingFraction: 0.74), value: buds.noiseMode)
         .animation(.snappy(duration: 0.22), value: buds.link)
@@ -52,13 +56,13 @@ struct MenuView: View {
             BatteryRing(level: buds.link == .connected ? buds.batteryMin : nil,
                         charging: buds.leftBattery?.charging == true || buds.rightBattery?.charging == true,
                         size: 34)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(buds.link == .connected ? buds.deviceName : "Buds Hub")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Text(subtitle)
-                    .font(.caption)
+                    .font(.system(size: 12))
                     .foregroundStyle(buds.link == .failed(buds.lastError ?? "") ? .red : .secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -83,6 +87,7 @@ struct MenuView: View {
                 menu
             }
         }
+        .padding(.vertical, 10)
     }
 
     private var subtitle: String {
@@ -131,16 +136,17 @@ struct MenuView: View {
     // MARK: Noise control
 
     private var noiseControls: some View {
-        VStack(spacing: 7) {
+        VStack(spacing: 8) {
             LiquidSegmented(items: buds.availableNoiseModes, selection: buds.noiseMode,
+                            height: 28,
                             onSelect: { buds.setNoiseMode($0) }) { mode, selected in
                 HStack(spacing: 5) {
                     Image(systemName: mode.symbol)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .symbolEffect(.bounce, value: selected)
                     if selected {
                         Text(mode.shortTitle)
-                            .font(.caption.weight(.semibold))
+                            .font(.system(size: 13, weight: .semibold))
                             .lineLimit(1)
                             .fixedSize()
                             .transition(.scale(scale: 0.6).combined(with: .opacity))
@@ -149,16 +155,18 @@ struct MenuView: View {
                 .foregroundStyle(selected ? Color.primary : Color.secondary)
                 .help(mode.title)
                 .accessibilityLabel(mode.title)
-            } widthFor: { _, selected in selected ? nil : 40 }
+            } widthFor: { _, selected in selected ? nil : 42 }
 
             if buds.noiseMode == .anc, buds.has(.ancLevel) {
-                LiquidSegmented(items: LevelChoice.allCases, selection: buds.ancLevelHigh ? .high : .low,
+                LiquidSegmented(items: LevelChoice.allCases,
+                                selection: buds.ancLevelHigh ? .high : .low,
+                                height: 20,
                                 onSelect: { buds.setANCLevelHigh($0 == .high) }, label: { choice, selected in
                     Text(choice == .high ? "High" : "Low")
-                        .font(.caption2.weight(selected ? .semibold : .medium))
+                        .font(.system(size: 12, weight: selected ? .semibold : .medium))
                         .foregroundStyle(selected ? Color.primary : Color.secondary)
                 }, fitToLabels: true)
-                .frame(height: 22)
+                .frame(height: 26)
                 .transition(.blurReplace)
             }
 
@@ -170,17 +178,17 @@ struct MenuView: View {
 
     private var ambientSlider: some View {
         HStack(spacing: 8) {
-            Image(systemName: "speaker.wave.1").font(.system(size: 10)).foregroundStyle(.secondary)
+            Image(systemName: "speaker.wave.1").font(.system(size: 12)).foregroundStyle(.secondary)
             Slider(value: Binding(get: { Double(buds.ambientVolume) },
                                   set: { buds.setAmbientVolume(Int($0.rounded())) }),
                    in: 0...Double(max(1, buds.model?.ambientVolumeMax ?? 2)), step: 1)
                 .controlSize(.mini)
                 .tint(.accentColor)
-            Image(systemName: "speaker.wave.3").font(.system(size: 10)).foregroundStyle(.secondary)
+            Image(systemName: "speaker.wave.3").font(.system(size: 12)).foregroundStyle(.secondary)
             Text("\(buds.ambientVolume)")
-                .font(.caption2.monospacedDigit())
+                .font(.subheadline.monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 12, alignment: .trailing)
+                .frame(width: 16, alignment: .trailing)
         }
         .padding(.horizontal, 4)
     }
@@ -200,6 +208,7 @@ struct MenuView: View {
                             symbol: "airpods.chargingcase")
             }
         }
+        .frame(height: 24)
         .padding(.horizontal, 6)
     }
 
@@ -211,7 +220,7 @@ struct MenuView: View {
                 VStack(spacing: 6) {
                     ProgressView().controlSize(.small)
                     Text("Opening the control channel…")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
@@ -220,13 +229,13 @@ struct MenuView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     if let error = buds.lastError, buds.link != .idle {
                         Label(error, systemImage: "exclamationmark.triangle")
-                            .font(.caption)
+                            .font(.footnote)
                             .foregroundStyle(.red)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     if devices.isEmpty {
                         Text("Pair your Galaxy Buds in System Settings › Bluetooth, then come back here.")
-                            .font(.caption)
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                         Button("Open Bluetooth Settings") {
@@ -252,9 +261,9 @@ struct MenuView: View {
                                         .fill(devices.first(where: { $0.address == selectedAddress })?.connected == true ? .green : .secondary)
                                         .frame(width: 6, height: 6)
                                     Text(devices.first(where: { $0.address == selectedAddress })?.name ?? "Choose device")
-                                        .font(.caption)
+                                        .font(.callout)
                                         .lineLimit(1)
-                                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 7, weight: .bold))
+                                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 8, weight: .bold))
                                 }
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 9)
@@ -275,7 +284,7 @@ struct MenuView: View {
                         }
                         Button("Refresh devices") { refreshDevices() }
                             .buttonStyle(.plain)
-                            .font(.caption2)
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -343,14 +352,14 @@ private struct BatteryCell: View {
     let symbol: String
 
     var body: some View {
-        HStack(spacing: 3) {
-            Image(systemName: symbol).font(.system(size: 10)).foregroundStyle(.secondary)
-            Text(side).font(.system(size: 9, weight: .medium)).foregroundStyle(.tertiary)
+        HStack(spacing: 4) {
+            Image(systemName: symbol).font(.system(size: 12)).foregroundStyle(.secondary)
+            Text(side).font(.system(size: 10, weight: .medium)).foregroundStyle(.tertiary)
             if battery?.charging == true {
-                Image(systemName: "bolt.fill").font(.system(size: 8)).foregroundStyle(.green)
+                Image(systemName: "bolt.fill").font(.system(size: 9)).foregroundStyle(.green)
             }
             Text(displayLevel)
-                .font(.caption.monospacedDigit())
+                .font(.system(size: 13).monospacedDigit())
                 .foregroundStyle(color)
         }
         .help(placement?.title ?? side)

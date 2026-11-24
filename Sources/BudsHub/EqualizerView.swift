@@ -7,12 +7,12 @@ struct EqualizerCard: View {
     @State private var editingCustom = false
 
     private let bandLabels = ["60", "120", "250", "500", "1k", "2k", "4k", "8k", "12k"]
-    private let columns = [GridItem(.adaptive(minimum: 66), spacing: 5)]
+    private let columns = [GridItem(.adaptive(minimum: 66), spacing: 6)]
 
     var body: some View {
         Card(title: "Equalizer", symbol: "slider.vertical.3") {
-            VStack(alignment: .leading, spacing: 8) {
-                LazyVGrid(columns: columns, spacing: 5) {
+            VStack(alignment: .leading, spacing: 10) {
+                LazyVGrid(columns: columns, spacing: 6) {
                     chip("Off", selected: buds.eqSelection == .off && !editingCustom) {
                         buds.setEQOff(); editingCustom = false
                     }
@@ -39,12 +39,12 @@ struct EqualizerCard: View {
                         ForEach(0..<9, id: \.self) { index in
                             VStack(spacing: 3) {
                                 Text(gainLabel(draft[index]))
-                                    .font(.system(size: 8, weight: .medium).monospacedDigit())
+                                    .font(.system(size: 11, weight: .medium).monospacedDigit())
                                     .foregroundStyle(draft[index] == 0 ? .secondary : .primary)
                                 BandSlider(value: draft[index], range: -10...10) { value in
                                     draft[index] = value
                                 }
-                                .frame(height: 58)
+                                .frame(height: 64)
                                 .accessibilityLabel("\(bandLabels[index]) hertz")
                                 .accessibilityValue("\(draft[index]) decibels")
                                 .accessibilityAdjustableAction { direction in
@@ -52,13 +52,13 @@ struct EqualizerCard: View {
                                     draft[index] = min(10, max(-10, draft[index] + delta))
                                 }
                                 Text(bandLabels[index])
-                                    .font(.system(size: 8))
+                                    .font(.system(size: 10))
                                     .foregroundStyle(.secondary)
                             }
                             .frame(maxWidth: .infinity)
                         }
                     }
-                    HStack(spacing: 6) {
+                    HStack(spacing: 8) {
                         Button("Reset") { draft = Array(repeating: 0, count: 9) }
                             .buttonStyle(.glass)
                             .controlSize(.small)
@@ -70,7 +70,7 @@ struct EqualizerCard: View {
                         .buttonStyle(.glassProminent)
                         .controlSize(.small)
                     }
-                    .font(.caption2)
+                    .font(.callout)
                 }
             }
             .onAppear { draft = buds.customEQBands }
@@ -88,21 +88,31 @@ struct EqualizerCard: View {
 
     private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
-                .font(.caption2.weight(selected ? .semibold : .medium))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .foregroundStyle(selected ? Color.primary : Color.secondary)
-                .frame(maxWidth: .infinity, minHeight: 22)
-                .background {
-                    Capsule().fill(selected ? Color.primary.opacity(0.15) : Color.primary.opacity(0.05))
+            HStack(spacing: 3) {
+                Text(title)
+                    .font(.system(size: 12, weight: selected ? .semibold : .medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                if selected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
                 }
-                .overlay {
-                    Capsule().strokeBorder(Color.primary.opacity(selected ? 0.12 : 0.06), lineWidth: 0.5)
-                }
-                .contentShape(Capsule())
+            }
+            .foregroundStyle(selected ? Color.primary : Color.secondary)
+            .frame(maxWidth: .infinity, minHeight: 26)
+            .background {
+                Capsule().fill(selected ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.05))
+            }
+            .overlay {
+                Capsule().strokeBorder(selected ? Color.accentColor.opacity(0.35) : Color.primary.opacity(0.06),
+                                       lineWidth: 0.5)
+            }
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .animation(.snappy(duration: 0.18), value: selected)
     }
 
     private func gainLabel(_ value: Int) -> String {
