@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import Foundation
 import PackageDescription
 
@@ -21,5 +21,5 @@ let package = Package(
         .testTarget(name: "BudsKitTests", dependencies: ["BudsKit"],
                     swiftSettings: testSettings)
     ],
-    swiftLanguageVersions: [.v5]
+    swiftLanguageModes: [.v5]
 )

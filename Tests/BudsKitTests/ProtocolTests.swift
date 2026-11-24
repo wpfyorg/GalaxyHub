@@ -56,7 +56,9 @@ private func bytes(_ hex: String) -> [UInt8] {
 }
 
 @Test func parsesVendorProductID() {
-    #expect(DeviceCatalog.productID(fromServiceUUID: "d908aab5-7a90-4cbe-8641-86a553db00000154") == 340)
+    // Production form: a standard 8-4-4-4-12 UUID string as produced by
+    // IOBluetoothTransport.uuidString (32 hex digits without dashes).
+    #expect(DeviceCatalog.productID(fromServiceUUID: "d908aab5-7a90-4cbe-8641-86a553db0154") == 340)
     #expect(DeviceCatalog.model(productID: 340)?.id == .buds3Pro)
     #expect(DeviceCatalog.model(productID: 0x154)?.id == .buds3Pro)
 }
@@ -68,6 +70,18 @@ private func bytes(_ hex: String) -> [UInt8] {
     #expect(eq?.presetCount == 2)
     #expect(eq?.bandCount == 3)
     #expect(eq?.bands == [-1, -3, 0])
+}
+
+@Test func frameDirectionRoundTrip() throws {
+    // Captured traffic: the 0x1000 bit marks device-originated frames.
+    for response in [false, true] {
+        let bytes = try #require(SPPCodec.encode(id: MsgID.noiseControls, payload: [2], style: .modern, response: response))
+        #expect(SPPCodec.decodeSingle(bytes, style: .modern)?.direction == (response ? .response : .request))
+    }
+    for response in [false, true] {
+        let bytes = try #require(SPPCodec.encode(id: MsgID.noiseControls, payload: [2], style: .legacy, response: response))
+        #expect(SPPCodec.decodeSingle(bytes, style: .legacy)?.direction == (response ? .response : .request))
+    }
 }
 
 @Test func legacyRoundTrip() throws {

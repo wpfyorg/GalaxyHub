@@ -10,6 +10,10 @@ public enum FrameStyle: String, Codable, Sendable {
     public var eom: UInt8 { self == .legacy ? 0xEE : 0xDD }
 }
 
+/// Frame origin. Live Buds3 Pro captures show the 0x1000 header bit set on
+/// every device-originated frame (status pushes, replies) and clear on the
+/// host's requests, so `.response` means device-to-host and `.request` means
+/// host-to-device.
 public enum SPPDirection: String, Sendable {
     case request
     case response
@@ -85,7 +89,7 @@ public enum SPPCodec {
                 headerSize = 3
                 let rawHeader = UInt16(buffer[1]) | (UInt16(buffer[2]) << 8)
                 size = Int(rawHeader & 0x03FF)
-                direction = (rawHeader & 0x1000) != 0 ? .request : .response
+                direction = (rawHeader & 0x1000) != 0 ? .response : .request
                 isFragment = (rawHeader & 0x2000) != 0
             }
 

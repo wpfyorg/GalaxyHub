@@ -242,7 +242,7 @@ public enum StatusParser {
         case .buds2Pro:
             parseBuds2Pro(p, &s)
         case .budsFe, .budsCore, .buds3Fe:
-            parseFeFamily(p, &s)
+            parseFeFamily(p, &s, isBuds3Fe: model.id == .buds3Fe)
         case .buds3:
             parseBuds3(p, &s)
         case .buds3Pro:
@@ -437,7 +437,7 @@ public enum StatusParser {
         }
     }
 
-    private static func parseFeFamily(_ p: [UInt8], _ s: inout BudsState) {
+    private static func parseFeFamily(_ p: [UInt8], _ s: inout BudsState, isBuds3Fe: Bool) {
         guard p.count >= 34 else { return }
         s.autoAdjustSound = p[8] == 1
         s.equalizerMode = Int(p[9])
@@ -473,7 +473,7 @@ public enum StatusParser {
         if let v = byte() { s.spatialAudio = v != 0 }
         _ = byte(); _ = byte(); _ = byte(); _ = byte()
         if let v = byte() { s.hearingEnhancements = v }
-        if modelIsBuds3Fe(s) { return }
+        if isBuds3Fe { return }
         _ = byte()
         if let v = byte() { s.headTracking = v != 0 }
         if let v = byte() {
@@ -482,8 +482,6 @@ public enum StatusParser {
             s.caseCharging = (v & 0x01) != 0
         }
     }
-
-    private static func modelIsBuds3Fe(_ s: BudsState) -> Bool { false }
 
     private static func parseBuds3(_ p: [UInt8], _ s: inout BudsState) {
         guard p.count >= 25 else { return }

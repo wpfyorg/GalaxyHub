@@ -80,7 +80,9 @@ The script builds with SwiftPM, generates the icon, writes `Info.plist` and
 ad-hoc signs the bundle. macOS asks for Bluetooth permission once per re-signed
 build; approve it in the system dialog.
 
-Development with the Command Line Tools (no Xcode):
+Development with the Command Line Tools (no Xcode). A Swift 6 toolchain is
+required for the Swift Testing test target; the package itself stays in Swift 5
+language mode:
 
 ```sh
 export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk

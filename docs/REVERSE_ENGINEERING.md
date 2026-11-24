@@ -18,16 +18,17 @@ advertised by the Buds3 Pro are:
 | BTIS | 21 | vendor UUID |
 
 `GEARMANAGER` is the normal control channel. Opening RFCOMM on macOS often returns
-`kIOReturnError` while the channel opens a moment later; poll `isOpen()` for up to
-two seconds instead of treating the status as fatal.
+`kIOReturnError` while the channel opens a moment later; poll `isOpen()` for about
+six seconds (60 × 0.1 s), stopping early once data arrives, instead of treating the
+status as fatal.
 
 ### Model detection
 
 Samsung embeds the decimal product ID in the vendor SPP service UUID:
 
 ```
-d908aab5-7a90-4cbe-8641-86a553db00000154
-                                              ^ product ID 0x154 = 340 = Buds3 Pro
+d908aab5-7a90-4cbe-8641-86a553db0154
+                              ^^^^ product ID 0x0154 = 340 = Buds3 Pro
 ```
 
 `DeviceCatalog.productID(fromServiceUUID:)` reads the last four bytes. This works
@@ -47,8 +48,8 @@ FD  <size lo> <size hi + flags>  <msg id>  <payload…>  <crc lo> <crc hi>  DD
 ```
 
 * `size` occupies bits 0–9 and counts message ID + payload + CRC.
-* bit 12 (`0x1000`) is set on some pushed/request frames; the client reads it but
-  does not require it.
+* bit 12 (`0x1000`) is set on every device-originated frame in our captures
+  (status pushes and replies) and clear on host requests.
 * bit 13 (`0x2000`) marks a fragment (firmware transfer only).
 * bits 14–15 appear on some firmware pushes (`0x40`, `0x80`, `0xC0` high byte) and
   must be ignored when masking the size.

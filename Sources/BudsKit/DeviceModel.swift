@@ -332,13 +332,14 @@ public enum DeviceCatalog {
         return nil
     }
 
-    /// Extracts the Samsung product ID from the vendor-specific SPP service UUID
-    /// (`d908aab5-7a90-4cbe-8641-86a553dbXXXXXXXX`).
+    /// Extracts the Samsung product ID from the vendor-specific SPP service
+    /// UUID. A standard UUID string (`d908aab5-7a90-4cbe-8641-86a553db0154`)
+    /// is 32 hex digits without dashes; the product ID occupies the final two
+    /// bytes (the last four hex digits).
     public static func productID(fromServiceUUID uuid: String) -> Int? {
         let compact = uuid.replacingOccurrences(of: "-", with: "").lowercased()
         let prefix = "d908aab57a904cbe864186a553db"
-        guard compact.hasPrefix(prefix), compact.count >= prefix.count + 8 else { return nil }
-        let suffix = String(compact.suffix(8))
-        return Int(suffix, radix: 16)
+        guard compact.hasPrefix(prefix), compact.count == 32 else { return nil }
+        return Int(compact.suffix(4), radix: 16)
     }
 }

@@ -10,6 +10,8 @@ public final class DemoTransport: BudsLink {
     private var buffer = [UInt8]()
     private var started = false
     private var findActive = false
+    private var session = 0
+    private var customBands: [Int] = [5, 4, 3, 1, 0, 0, 1, 2, 2]
 
     public init() {}
 
@@ -26,19 +28,22 @@ public final class DemoTransport: BudsLink {
 
     public func send(_ bytes: [UInt8], completion: ((Error?) -> Void)?) {
         buffer.append(contentsOf: bytes)
-        while let frame = SPPCodec.extractFrames(from: &buffer, style: .modern).first {
+        let frames = SPPCodec.extractFrames(from: &buffer, style: .modern)
+        for frame in frames {
             handle(frame)
         }
         DispatchQueue.main.async { completion?(nil) }
     }
 
     public func disconnect() {
+        session += 1
         started = false
     }
 
     private func handle(_ frame: SPPFrame) {
+        let token = session
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
-            guard let self else { return }
+            guard let self, token == self.session else { return }
             if !self.started { self.startSession() }
             switch frame.id {
             case MsgID.managerInfo, MsgID.updateTime:
@@ -49,6 +54,12 @@ public final class DemoTransport: BudsLink {
                 self.emitVersionLong()
             case MsgID.customEqualizerRecv:
                 self.emitCustomEQ()
+            case MsgID.customEqualizerSend:
+                // Remember the curve the client applied so later reads return
+                // it instead of the startup curve.
+                if frame.payload.first == 9, frame.payload.count >= 10 {
+                    self.customBands = frame.payload[1...].map { Int(Int8(bitPattern: $0)) }
+                }
             case MsgID.noiseControls, MsgID.noiseReductionLevel, MsgID.ambientVolume,
                  MsgID.setDetectConversations, MsgID.setSidetone, MsgID.setAncWithOneEarbud,
                  MsgID.outsideDoubleTap, MsgID.extraHighAmbient, MsgID.adaptiveEQVolume,
@@ -62,7 +73,11 @@ public final class DemoTransport: BudsLink {
                 self.findActive = false
                 self.emit(id: MsgID.acknowledgement, payload: [frame.id])
             case MsgID.checkFit:
-                self.emit(id: MsgID.fitResult, payload: [1, 1])
+                // Only the start command produces a result; the controller
+                // sends [0] to stop the test after eight seconds.
+                if frame.payload.first == 1 {
+                    self.emit(id: MsgID.fitResult, payload: [1, 1])
+                }
             case MsgID.multipointInfo:
                 self.emit(id: MsgID.multipointInfo, payload: [1, 1, 0, 0, 1])
             default:
@@ -102,7 +117,7 @@ public final class DemoTransport: BudsLink {
     }
 
     private func emitCustomEQ() {
-        let bands: [Int8] = [5, 4, 3, 1, 0, 0, 1, 2, 2]
+        let bands: [Int8] = customBands.map { Int8(clamping: $0) }
         let presets: [[Int8]] = [
             [5, 4, 1, 0, 0, 0, 1, 3, 4],
             [-2, -1, 0, 0, 0, 0, 0, 1, 2],
