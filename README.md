@@ -26,6 +26,9 @@ project.
 - **Find my earbuds** and **fit test** with left/right results.
 - **Device info** — model, firmware, SKU, build, revision, multipoint state.
 - **Global shortcuts** with a HUD, no Accessibility permission required.
+- **Audio focus** — "Use this Mac" takes multipoint audio from the phone, and an
+  optional auto-claim watches Mac Now Playing. macOS uses AAC/SBC; Samsung SSC
+  24-bit is phone-only. See [docs/AUDIO.md](docs/AUDIO.md).
 - **Auto reconnect** when the buds come back to the Mac, and optional remembered
   noise/EQ settings per device.
 - **Multi-device** — detects the model from the vendor SPP UUID product ID, then

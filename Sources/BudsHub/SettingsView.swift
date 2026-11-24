@@ -4,13 +4,16 @@ import BudsKit
 
 struct SettingsView: View {
     @ObservedObject var model: AppModel
-    @State private var tab = "general"
+    @AppStorage("settingsTab") private var tab = "general"
 
     var body: some View {
         TabView(selection: $tab) {
             GeneralSettings(model: model)
                 .tabItem { Label("General", systemImage: "gearshape") }
                 .tag("general")
+            ControlsSettings(model: model)
+                .tabItem { Label("Controls", systemImage: "slider.horizontal.3") }
+                .tag("controls")
             DevicesSettings(model: model)
                 .tabItem { Label("Devices", systemImage: "earbuds") }
                 .tag("devices")
@@ -92,10 +95,6 @@ private struct GeneralSettings: View {
                     Text("Show battery in the menu bar icon")
                     Text("The ring around the icon fills with the lowest earbud battery.")
                 }
-                Toggle(isOn: $buds.autoClaimAudio) {
-                    Text("Take audio when Mac media plays")
-                    Text("Use the buds as the Mac output and claim multipoint focus when Now Playing starts.")
-                }
                 Toggle("Show HUD for shortcuts", isOn: $showHUD)
                 Toggle("Enable global shortcuts", isOn: $hotkeysEnabled)
                     .onChange(of: hotkeysEnabled) { _, _ in model.reloadHotkeys() }
@@ -129,6 +128,63 @@ private struct GeneralSettings: View {
         case .idle:
             return buds.address == nil ? "Not connected" : "Waiting to reconnect"
         }
+    }
+}
+
+// MARK: - Controls
+
+private struct ControlsSettings: View {
+    @ObservedObject var model: AppModel
+    @ObservedObject private var buds: BudsController
+
+    init(model: AppModel) {
+        self.model = model
+        self.buds = model.controller
+    }
+
+    var body: some View {
+        Group {
+            if buds.link == .connected {
+                ScrollView {
+                    VStack(spacing: 12) {
+                        AudioSettingsCard(buds: buds)
+                        if hasSound { SoundSettingsCard(buds: buds) }
+                        if hasGestures { GesturesSettingsCard(buds: buds) }
+                        if buds.has(.findMyBuds) || buds.has(.fitTest) {
+                            FindAndFitCard(buds: buds)
+                        }
+                        DeviceSettingsCard(buds: buds)
+                    }
+                    .padding(16)
+                }
+            } else {
+                VStack(spacing: 10) {
+                    Image(systemName: "earbuds")
+                        .font(.system(size: 34, weight: .light))
+                        .foregroundStyle(.tertiary)
+                    Text("Connect the earbuds to edit sound, gesture and fit controls.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    Button("Connect") { model.controller.reconnect() }
+                        .buttonStyle(.glassProminent)
+                        .disabled(model.controller.address == nil)
+                }
+                .padding(30)
+            }
+        }
+    }
+
+    private var hasSound: Bool {
+        buds.has(.ambientVolume) || buds.has(.ambientCustomize) || buds.has(.sidetone)
+            || buds.has(.detectConversations) || buds.has(.ancWithOneEarbud) || buds.has(.adaptiveVolume)
+            || buds.has(.sirenDetect) || buds.has(.autoPause) || buds.has(.speakSeamlessly)
+            || buds.has(.spatialAudio) || buds.has(.headTracking) || buds.has(.extraHighAmbient)
+            || buds.has(.seamlessConnection)
+    }
+
+    private var hasGestures: Bool {
+        buds.has(.touchLock) || buds.has(.advancedTouch) || buds.has(.doubleTapVolume)
     }
 }
 

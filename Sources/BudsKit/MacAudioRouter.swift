@@ -3,29 +3,33 @@ import CoreAudio
 import Foundation
 
 /// Mac-side audio routing helpers. The buds switch multipoint focus based on
-/// A2DP activity, so selecting them as the default output and starting a short
-/// silent stream is enough to ask the firmware for audio focus.
+/// A2DP activity, so selecting them as the default output and holding a silent
+/// IO stream is enough to ask the firmware for audio focus.
 public enum MacAudioRouter {
-    private static var silentPlayer: AVAudioPlayer?
+    private static var engine: AVAudioEngine?
+    private static var holdTimer: Timer?
+    private static var heldDevice: AudioDeviceID?
 
     public static func outputDevices() -> [(id: AudioDeviceID, name: String)] {
-        var address = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyDevices,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain)
-        var size: UInt32 = 0
-        guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size) == noErr else {
-            return []
-        }
-        let count = Int(size) / MemoryLayout<AudioDeviceID>.size
-        var ids = [AudioDeviceID](repeating: 0, count: count)
-        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &ids) == noErr else {
-            return []
-        }
-        return ids.compactMap { id in
+        enumerateDevices().compactMap { id in
             guard hasOutput(id), let name = name(of: id) else { return nil }
             return (id, name)
         }
+    }
+
+    public static func device(forUID uid: String) -> AudioDeviceID? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyTranslateUIDToDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        var value = uid as CFString
+        var id: AudioDeviceID = kAudioObjectUnknown
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = withUnsafeMutablePointer(to: &value) { pointer in
+            AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address,
+                                       UInt32(MemoryLayout<CFString?>.size), pointer, &size, &id)
+        }
+        return status == noErr && id != kAudioObjectUnknown ? id : nil
     }
 
     public static func device(named target: String) -> AudioDeviceID? {
@@ -37,7 +41,6 @@ public enum MacAudioRouter {
         if let partial = devices.first(where: { $0.name.lowercased().contains(lowered) }) {
             return partial.id
         }
-        // Bluetooth names can gain/lose a user suffix; match the stable part.
         let needles = ["buds3 pro", "buds2 pro", "buds pro", "buds live", "buds+", "buds"]
             .filter { lowered.contains($0) }
         for needle in needles {
@@ -72,14 +75,86 @@ public enum MacAudioRouter {
         return name(of: device)
     }
 
-    /// Selects the buds as the default output and opens a short silent A2DP
-    /// stream. Returns false when the device is not present or cannot be set.
+    /// Selects the buds as the default output and holds a silent A2DP stream for
+    /// a short bridging period. The media app that starts playing keeps the
+    /// stream alive; without this hold the link closes as soon as a short clip
+    /// ends and the buds fall back to the phone.
     @discardableResult
-    public static func claim(deviceName: String) -> Bool {
-        guard let id = device(named: deviceName) ?? device(named: "Buds") else { return false }
+    public static func claim(address: String?, deviceName: String) -> Bool {
+        let uid = address.map { $0.replacingOccurrences(of: ":", with: "-").uppercased() + ":output" }
+        let id = uid.flatMap(device(forUID:)) ?? device(named: deviceName) ?? device(named: "Buds")
+        guard let id else { return false }
         guard setDefaultOutput(id) else { return false }
-        playSilence()
-        return true
+        return hold(id)
+    }
+
+    /// Stops the silent bridge stream. Other apps that are playing keep their
+    /// own stream and the buds stay on the Mac.
+    public static func releaseHold() {
+        holdTimer?.invalidate()
+        holdTimer = nil
+        engine?.stop()
+        engine = nil
+        if let heldDevice {
+            AudioDeviceStop(heldDevice, nil)
+        }
+        heldDevice = nil
+    }
+
+    public static var isHolding: Bool { engine?.isRunning == true || heldDevice != nil }
+
+    private static func hold(_ id: AudioDeviceID) -> Bool {
+        releaseHold()
+        heldDevice = id
+        // Keep the bridge open long enough for a media app to start its own
+        // stream. A permanent hold would block the phone's media focus.
+        holdTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { _ in
+            releaseHold()
+        }
+        let engine = AVAudioEngine()
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 2) else {
+            return AudioDeviceStart(id, nil) == noErr
+        }
+        let silence = AVAudioSourceNode { _, _, _, audioBufferList in
+            for buffer in UnsafeMutableAudioBufferListPointer(audioBufferList) {
+                if let data = buffer.mData {
+                    memset(data, 0, Int(buffer.mDataByteSize))
+                }
+            }
+            return noErr
+        }
+        engine.attach(silence)
+        engine.connect(silence, to: engine.mainMixerNode, format: format)
+        var device = id
+        if let audioUnit = engine.outputNode.audioUnit {
+            AudioUnitSetProperty(audioUnit, kAudioOutputUnitProperty_CurrentDevice,
+                                 kAudioUnitScope_Global, 0, &device,
+                                 UInt32(MemoryLayout<AudioDeviceID>.size))
+        }
+        engine.prepare()
+        do {
+            try engine.start()
+            self.engine = engine
+            return true
+        } catch {
+            return AudioDeviceStart(id, nil) == noErr
+        }
+    }
+
+    private static func enumerateDevices() -> [AudioDeviceID] {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size) == noErr else {
+            return []
+        }
+        var ids = [AudioDeviceID](repeating: 0, count: Int(size) / MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &ids) == noErr else {
+            return []
+        }
+        return ids
     }
 
     private static func hasOutput(_ id: AudioDeviceID) -> Bool {
@@ -88,7 +163,8 @@ public enum MacAudioRouter {
             mScope: kAudioDevicePropertyScopeOutput,
             mElement: kAudioObjectPropertyElementMain)
         var size: UInt32 = 0
-        guard AudioObjectGetPropertyDataSize(id, &address, 0, nil, &size) == noErr, size >= UInt32(MemoryLayout<AudioBufferList>.size) else {
+        guard AudioObjectGetPropertyDataSize(id, &address, 0, nil, &size) == noErr,
+              size >= UInt32(MemoryLayout<AudioBufferList>.size) else {
             return false
         }
         let raw = UnsafeMutableRawPointer.allocate(byteCount: Int(size), alignment: MemoryLayout<AudioBufferList>.alignment)
@@ -111,39 +187,5 @@ public enum MacAudioRouter {
         guard status == noErr else { return nil }
         let text = name as String
         return text.isEmpty ? nil : text
-    }
-
-    private static func playSilence() {
-        silentPlayer?.stop()
-        guard let data = silentWAV(seconds: 0.8) else { return }
-        guard let player = try? AVAudioPlayer(data: data) else { return }
-        player.volume = 0.01
-        player.prepareToPlay()
-        silentPlayer = player
-        player.play()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            silentPlayer?.stop()
-            silentPlayer = nil
-        }
-    }
-
-    private static func silentWAV(seconds: Double) -> Data? {
-        let sampleRate = 44_100
-        let channels = 2
-        let bits = 16
-        let byteRate = sampleRate * channels * bits / 8
-        let blockAlign = channels * bits / 8
-        let frameCount = Int(Double(sampleRate) * seconds)
-        let dataSize = frameCount * blockAlign
-        var data = Data()
-        func append(_ string: String) { data.append(contentsOf: Array(string.utf8)) }
-        func append32(_ value: UInt32) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
-        func append16(_ value: UInt16) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
-        append("RIFF"); append32(UInt32(36 + dataSize)); append("WAVE")
-        append("fmt "); append32(16); append16(1); append16(UInt16(channels))
-        append32(UInt32(sampleRate)); append32(UInt32(byteRate)); append16(UInt16(blockAlign)); append16(UInt16(bits))
-        append("data"); append32(UInt32(dataSize))
-        data.append(Data(repeating: 0, count: dataSize))
-        return data
     }
 }

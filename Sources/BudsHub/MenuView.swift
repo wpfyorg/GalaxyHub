@@ -37,13 +37,7 @@ struct MenuView: View {
 
     var body: some View {
         GlassBox(spacing: 0) {
-            if buds.link == .connected && moreExpanded {
-                ScrollView { content }
-                    .scrollIndicators(.never)
-                    .frame(width: 300, height: 600)
-            } else {
-                content.frame(width: 300)
-            }
+            content.frame(width: 300)
         }
         .animation(.spring(response: 0.42, dampingFraction: 0.74), value: buds.noiseMode)
         .animation(.snappy(duration: 0.22), value: buds.link)

@@ -290,7 +290,7 @@ public final class BudsController: ObservableObject {
     public func claimMacAudio() -> Bool {
         guard link == .connected else { return false }
         let name = deviceName.isEmpty ? (model?.displayName ?? "Buds") : deviceName
-        let ok = MacAudioRouter.claim(deviceName: name)
+        let ok = MacAudioRouter.claim(address: address, deviceName: name)
         addLog(.init(direction: .info, name: ok ? "Audio claimed" : "Audio claim failed",
                      summary: ok ? name : "No matching output device"))
         return ok
