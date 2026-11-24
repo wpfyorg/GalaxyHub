@@ -9,6 +9,7 @@ public enum MacAudioRouter {
     private static var engine: AVAudioEngine?
     private static var holdTimer: Timer?
     private static var heldDevice: AudioDeviceID?
+    private static var usedHALStart = false
 
     public static func outputDevices() -> [(id: AudioDeviceID, name: String)] {
         enumerateDevices().compactMap { id in
@@ -95,10 +96,11 @@ public enum MacAudioRouter {
         holdTimer = nil
         engine?.stop()
         engine = nil
-        if let heldDevice {
+        if usedHALStart, let heldDevice {
             AudioDeviceStop(heldDevice, nil)
         }
         heldDevice = nil
+        usedHALStart = false
     }
 
     public static var isHolding: Bool { engine?.isRunning == true || heldDevice != nil }
@@ -106,6 +108,7 @@ public enum MacAudioRouter {
     private static func hold(_ id: AudioDeviceID) -> Bool {
         releaseHold()
         heldDevice = id
+        usedHALStart = false
         // Keep the bridge open long enough for a media app to start its own
         // stream. A permanent hold would block the phone's media focus.
         holdTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { _ in
@@ -113,7 +116,8 @@ public enum MacAudioRouter {
         }
         let engine = AVAudioEngine()
         guard let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 2) else {
-            return AudioDeviceStart(id, nil) == noErr
+            usedHALStart = AudioDeviceStart(id, nil) == noErr
+            return usedHALStart
         }
         let silence = AVAudioSourceNode { _, _, _, audioBufferList in
             for buffer in UnsafeMutableAudioBufferListPointer(audioBufferList) {
@@ -137,7 +141,8 @@ public enum MacAudioRouter {
             self.engine = engine
             return true
         } catch {
-            return AudioDeviceStart(id, nil) == noErr
+            usedHALStart = AudioDeviceStart(id, nil) == noErr
+            return usedHALStart
         }
     }
 
