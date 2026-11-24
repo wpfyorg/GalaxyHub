@@ -150,10 +150,31 @@ final class HotKeyCenter {
     }
 }
 
+@MainActor
+private final class ShortcutRecorderRegistry {
+    static let shared = ShortcutRecorderRegistry()
+    private var activeID: UUID?
+    private var activeStop: (() -> Void)?
+
+    func begin(id: UUID, stop: @escaping () -> Void) {
+        if activeID != id { activeStop?() }
+        activeID = id
+        activeStop = stop
+    }
+
+    func end(id: UUID) {
+        if activeID == id {
+            activeID = nil
+            activeStop = nil
+        }
+    }
+}
+
 struct ShortcutRecorder: View {
     @Binding var shortcut: Shortcut?
     var onRecordingChange: (Bool) -> Void = { _ in }
 
+    @State private var id = UUID()
     @State private var recording = false
     @State private var monitor: Any?
 
@@ -180,6 +201,7 @@ struct ShortcutRecorder: View {
     }
 
     private func start() {
+        ShortcutRecorderRegistry.shared.begin(id: id) { stop() }
         recording = true
         onRecordingChange(true)
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
@@ -203,6 +225,7 @@ struct ShortcutRecorder: View {
     }
 
     private func stop() {
+        ShortcutRecorderRegistry.shared.end(id: id)
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
         if recording { onRecordingChange(false) }

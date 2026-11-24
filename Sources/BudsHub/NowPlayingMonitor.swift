@@ -46,7 +46,7 @@ final class NowPlayingMonitor {
         }
     }
 
-    private static func nowPlaying() -> Bool {
+    nonisolated private static func nowPlaying() -> Bool {
         let script = #"""
         ObjC.import('Foundation');
         const bundle = $.NSBundle.bundleWithPath('/System/Library/PrivateFrameworks/MediaRemote.framework/');

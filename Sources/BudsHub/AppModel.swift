@@ -77,18 +77,22 @@ final class AppModel: ObservableObject {
         case .find:
             guard controller.has(.findMyBuds), controller.link == .connected else { return }
             controller.setFindMyBuds(active: !controller.findMyBudsActive)
-            HUD.shared.show(title: controller.findMyBudsActive ? "Finding earbuds" : "Stopped",
-                            symbol: "dot.radiowaves.left.and.right",
-                            subtitle: controller.findMyBudsActive ? "Playing a sound" : controller.deviceName,
-                            battery: controller.batteryMin)
+            if showHUD {
+                HUD.shared.show(title: controller.findMyBudsActive ? "Finding earbuds" : "Stopped",
+                                symbol: "dot.radiowaves.left.and.right",
+                                subtitle: controller.findMyBudsActive ? "Playing a sound" : controller.deviceName,
+                                battery: controller.batteryMin)
+            }
             return
         case .takeAudio:
             guard controller.link == .connected else { return }
             let ok = controller.claimMacAudio()
-            HUD.shared.show(title: ok ? "Audio on this Mac" : "Could not switch audio",
-                            symbol: "hifispeaker.2",
-                            subtitle: ok ? controller.deviceName : "Check the output device",
-                            battery: controller.batteryMin, tinted: ok)
+            if showHUD {
+                HUD.shared.show(title: ok ? "Audio on this Mac" : "Could not switch audio",
+                                symbol: "hifispeaker.2",
+                                subtitle: ok ? controller.deviceName : "Check the output device",
+                                battery: controller.batteryMin, tinted: ok)
+            }
             return
         }
         guard let mode = controller.noiseMode else { return }

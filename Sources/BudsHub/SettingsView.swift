@@ -45,7 +45,6 @@ struct SettingsView: View {
 private struct GeneralSettings: View {
     @ObservedObject var model: AppModel
     @ObservedObject private var buds: BudsController
-    @AppStorage("showHUD") private var showHUD = true
     @AppStorage("hotkeysEnabled") private var hotkeysEnabled = true
 
     init(model: AppModel) {
@@ -95,7 +94,7 @@ private struct GeneralSettings: View {
                     Text("Show battery in the menu bar icon")
                     Text("The ring around the icon fills with the lowest earbud battery.")
                 }
-                Toggle("Show HUD for shortcuts", isOn: $showHUD)
+                Toggle("Show HUD for shortcuts", isOn: $model.showHUD)
                 Toggle("Enable global shortcuts", isOn: $hotkeysEnabled)
                     .onChange(of: hotkeysEnabled) { _, _ in model.reloadHotkeys() }
                 Toggle("Launch at login", isOn: $model.launchAtLogin)
@@ -313,7 +312,13 @@ private struct ShortcutSettings: View {
             Section {
                 ForEach(ShortcutAction.allCases) { action in
                     LabeledContent {
-                        ShortcutRecorder(shortcut: binding(for: action)) { _ in }
+                        ShortcutRecorder(shortcut: binding(for: action)) { recording in
+                            if recording {
+                                HotKeyCenter.shared.unregisterAll()
+                            } else {
+                                model.reloadHotkeys()
+                            }
+                        }
                     } label: {
                         Label {
                             VStack(alignment: .leading, spacing: 1) {

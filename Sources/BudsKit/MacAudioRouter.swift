@@ -82,8 +82,15 @@ public enum MacAudioRouter {
     /// ends and the buds fall back to the phone.
     @discardableResult
     public static func claim(address: String?, deviceName: String) -> Bool {
-        let uid = address.map { $0.replacingOccurrences(of: ":", with: "-").uppercased() + ":output" }
-        let id = uid.flatMap(device(forUID:)) ?? device(named: deviceName) ?? device(named: "Buds")
+        let id: AudioDeviceID?
+        if let address {
+            let uid = address.replacingOccurrences(of: ":", with: "-").uppercased() + ":output"
+            // A targeted claim must not silently select a different pair of
+            // buds; only fall back when no address was supplied.
+            id = device(forUID: uid)
+        } else {
+            id = device(named: deviceName) ?? device(named: "Buds")
+        }
         guard let id else { return false }
         guard setDefaultOutput(id) else { return false }
         return hold(id)
@@ -103,7 +110,7 @@ public enum MacAudioRouter {
         usedHALStart = false
     }
 
-    public static var isHolding: Bool { engine?.isRunning == true || heldDevice != nil }
+    public static var isHolding: Bool { engine?.isRunning == true || usedHALStart }
 
     private static func hold(_ id: AudioDeviceID) -> Bool {
         releaseHold()
@@ -117,6 +124,7 @@ public enum MacAudioRouter {
         let engine = AVAudioEngine()
         guard let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 2) else {
             usedHALStart = AudioDeviceStart(id, nil) == noErr
+            if !usedHALStart { releaseHold() }
             return usedHALStart
         }
         let silence = AVAudioSourceNode { _, _, _, audioBufferList in
@@ -142,6 +150,7 @@ public enum MacAudioRouter {
             return true
         } catch {
             usedHALStart = AudioDeviceStart(id, nil) == noErr
+            if !usedHALStart { releaseHold() }
             return usedHALStart
         }
     }
