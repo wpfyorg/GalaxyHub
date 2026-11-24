@@ -101,6 +101,9 @@ public final class BudsController: ObservableObject {
     @Published public var menuBarBattery: Bool {
         didSet { SettingsStore.shared.menuBarBattery = menuBarBattery }
     }
+    @Published public var autoClaimAudio: Bool {
+        didSet { SettingsStore.shared.autoClaimAudio = autoClaimAudio }
+    }
 
     // MARK: Internals
 
@@ -128,6 +131,7 @@ public final class BudsController: ObservableObject {
         autoReconnect = store.autoReconnect
         rememberSettings = store.rememberSettings
         menuBarBattery = store.menuBarBattery
+        autoClaimAudio = store.autoClaimAudio
     }
 
     deinit {
@@ -278,6 +282,18 @@ public final class BudsController: ObservableObject {
             deviceName = "Galaxy Buds"
         }
         addLog(.init(direction: .info, name: "Disconnected"))
+    }
+
+    /// Selects the buds as the Mac's default output and opens a short silent
+    /// A2DP stream, which makes the firmware take audio focus from the phone.
+    @discardableResult
+    public func claimMacAudio() -> Bool {
+        guard link == .connected else { return false }
+        let name = deviceName.isEmpty ? (model?.displayName ?? "Buds") : deviceName
+        let ok = MacAudioRouter.claim(deviceName: name)
+        addLog(.init(direction: .info, name: ok ? "Audio claimed" : "Audio claim failed",
+                     summary: ok ? name : "No matching output device"))
+        return ok
     }
 
     public func reconnect() {

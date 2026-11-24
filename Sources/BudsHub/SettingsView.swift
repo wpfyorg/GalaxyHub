@@ -92,6 +92,10 @@ private struct GeneralSettings: View {
                     Text("Show battery in the menu bar icon")
                     Text("The ring around the icon fills with the lowest earbud battery.")
                 }
+                Toggle(isOn: $buds.autoClaimAudio) {
+                    Text("Take audio when Mac media plays")
+                    Text("Use the buds as the Mac output and claim multipoint focus when Now Playing starts.")
+                }
                 Toggle("Show HUD for shortcuts", isOn: $showHUD)
                 Toggle("Enable global shortcuts", isOn: $hotkeysEnabled)
                     .onChange(of: hotkeysEnabled) { _, _ in model.reloadHotkeys() }

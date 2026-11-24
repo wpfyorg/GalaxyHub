@@ -37,6 +37,7 @@ final class AppModel: ObservableObject {
         guard !started else { return }
         started = true
         controller.start()
+        NowPlayingMonitor.shared.start(controller: controller)
         reloadHotkeys()
         if CommandLine.arguments.contains("--demo") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
@@ -81,6 +82,14 @@ final class AppModel: ObservableObject {
                             subtitle: controller.findMyBudsActive ? "Playing a sound" : controller.deviceName,
                             battery: controller.batteryMin)
             return
+        case .takeAudio:
+            guard controller.link == .connected else { return }
+            let ok = controller.claimMacAudio()
+            HUD.shared.show(title: ok ? "Audio on this Mac" : "Could not switch audio",
+                            symbol: "hifispeaker.2",
+                            subtitle: ok ? controller.deviceName : "Check the output device",
+                            battery: controller.batteryMin, tinted: ok)
+            return
         }
         guard let mode = controller.noiseMode else { return }
         if showHUD {
@@ -100,15 +109,24 @@ extension ShortcutAction {
 final class ShortcutStore: ObservableObject {
     @Published private(set) var shortcuts: [ShortcutAction: Shortcut] = [:]
 
-    private let key = "shortcuts.v1"
+    private let key = "shortcuts.v2"
+    private let legacyKey = "shortcuts.v1"
 
     init() {
-        if let data = UserDefaults.standard.data(forKey: key),
+        let current = UserDefaults.standard.data(forKey: key)
+        let legacy = current == nil ? UserDefaults.standard.data(forKey: legacyKey) : nil
+        if let data = current ?? legacy,
            let decoded = try? JSONDecoder().decode([String: Shortcut].self, from: data) {
-            shortcuts = Dictionary(uniqueKeysWithValues: decoded.compactMap { name, shortcut in
+            var loaded: [ShortcutAction: Shortcut] = Dictionary(uniqueKeysWithValues: decoded.compactMap { name, shortcut in
                 guard let action = ShortcutAction(rawValue: name) else { return nil }
                 return (action, shortcut)
             })
+            if current == nil, let newDefault = ShortcutAction.takeAudio.defaultShortcut,
+               loaded[.takeAudio] == nil {
+                loaded[.takeAudio] = newDefault
+            }
+            shortcuts = loaded
+            persist()
         } else {
             var defaults: [ShortcutAction: Shortcut] = [:]
             for action in ShortcutAction.allCases {

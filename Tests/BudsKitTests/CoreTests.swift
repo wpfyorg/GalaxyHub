@@ -11,3 +11,9 @@ import Testing
     #expect(frame?.id == MsgID.noiseControls)
     #expect(frame?.payload == [2])
 }
+
+@Test func coreAudioDevicesAreVisible() {
+    let devices = MacAudioRouter.outputDevices()
+    #expect(!devices.isEmpty)
+    #expect(MacAudioRouter.defaultOutputName != nil)
+}

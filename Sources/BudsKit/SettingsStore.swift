@@ -44,6 +44,7 @@ public final class SettingsStore {
         static let rememberSettings = "rememberSettings"
         static let launchAtLogin = "launchAtLogin"
         static let menuBarBattery = "menuBarBattery"
+        static let autoClaimAudio = "autoClaimAudio"
         static let deviceStates = "deviceStates"
         static let seenIntro = "seenIntro"
         static let showPacketLog = "showPacketLog"
@@ -73,6 +74,11 @@ public final class SettingsStore {
     public var menuBarBattery: Bool {
         get { defaults.object(forKey: Keys.menuBarBattery) as? Bool ?? true }
         set { defaults.set(newValue, forKey: Keys.menuBarBattery) }
+    }
+
+    public var autoClaimAudio: Bool {
+        get { defaults.object(forKey: Keys.autoClaimAudio) as? Bool ?? false }
+        set { defaults.set(newValue, forKey: Keys.autoClaimAudio) }
     }
 
     public var hasSeenIntro: Bool {

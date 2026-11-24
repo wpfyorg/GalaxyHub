@@ -60,7 +60,7 @@ struct Shortcut: Codable, Equatable {
 }
 
 enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
-    case cycle, anc, ambient, off, adaptive, find
+    case cycle, anc, ambient, off, adaptive, find, takeAudio
 
     var id: String { rawValue }
 
@@ -72,6 +72,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case .off: return "Noise control off"
         case .adaptive: return "Adaptive"
         case .find: return "Find my earbuds"
+        case .takeAudio: return "Use this Mac for audio"
         }
     }
 
@@ -83,6 +84,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case .off: return NoiseMode.off.symbol
         case .adaptive: return NoiseMode.adaptive.symbol
         case .find: return "dot.radiowaves.left.and.right"
+        case .takeAudio: return "hifispeaker.2"
         }
     }
 
@@ -95,6 +97,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case .off: return Shortcut(keyCode: UInt32(kVK_ANSI_O), modifiers: controlOption)
         case .adaptive: return Shortcut(keyCode: UInt32(kVK_ANSI_D), modifiers: controlOption)
         case .find: return Shortcut(keyCode: UInt32(kVK_ANSI_F), modifiers: controlOption)
+        case .takeAudio: return Shortcut(keyCode: UInt32(kVK_ANSI_M), modifiers: controlOption)
         }
     }
 }

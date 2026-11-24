@@ -6,6 +6,7 @@ struct MoreControls: View {
 
     var body: some View {
         VStack(spacing: 8) {
+            AudioCard(buds: buds)
             if buds.has(.equalizer) {
                 EqualizerCard(buds: buds)
             }
@@ -142,6 +143,44 @@ struct MoreControls: View {
         case 1: return "10 seconds"
         case 2: return "15 seconds"
         default: return "5 seconds"
+        }
+    }
+}
+
+// MARK: - Audio focus
+
+private struct AudioCard: View {
+    @ObservedObject var buds: BudsController
+
+    var body: some View {
+        Card(title: "Audio", symbol: "hifispeaker.2") {
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 18)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Audio focus").font(.caption.weight(.medium))
+                        Text("The buds follow the last device that starts audio")
+                            .font(.caption2).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 4)
+                    Button("Use this Mac") { buds.claimMacAudio() }
+                        .buttonStyle(.glass)
+                        .controlSize(.small)
+                }
+                ToggleRow(title: "Claim when Mac media plays",
+                          subtitle: "Watch Now Playing and take audio focus automatically",
+                          symbol: "music.note",
+                          isOn: Binding(get: { buds.autoClaimAudio },
+                                        set: { buds.autoClaimAudio = $0 }))
+                Text("macOS uses AAC or SBC. Samsung SSC 24-bit is only available from a Galaxy phone.")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }

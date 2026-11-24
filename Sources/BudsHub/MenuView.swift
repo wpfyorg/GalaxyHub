@@ -112,6 +112,8 @@ struct MenuView: View {
             Button("Settings…") { openSettings() }.keyboardShortcut(",")
             Button("Reconnect") { buds.reconnect() }
                 .disabled(buds.address == nil || buds.link == .connecting)
+            Button("Use this Mac for audio") { buds.claimMacAudio() }
+                .disabled(buds.link != .connected)
             Button("Try demo") { buds.connectDemo() }
                 .disabled(buds.link == .connecting)
             if buds.link == .connected {
