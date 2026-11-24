@@ -140,6 +140,13 @@ public final class IOBluetoothTransport: NSObject, BudsLink, IOBluetoothRFCOMMCh
     }
 
     public static func resolveDevice(address: String) -> IOBluetoothDevice? {
+        // Avoid enumerating paired devices on the connect path: the first
+        // IOBluetoothDevice.pairedDevices() call initialises CoreBluetooth and
+        // can block on the Bluetooth permission prompt. The address initializer
+        // gives us the same paired device object without that enumeration.
+        if let device = IOBluetoothDevice(addressString: displayAddress(address)) {
+            return device
+        }
         let normalized = normalize(address)
         return pairedDevices().first { normalize($0.addressString ?? "") == normalized }
     }
