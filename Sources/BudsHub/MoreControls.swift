@@ -35,7 +35,6 @@ private final class AudioSourceModel: ObservableObject {
 /// Controls settings tab.
 struct MoreControls: View {
     @ObservedObject var buds: BudsController
-    @Environment(\.openWindow) private var openWindow
     @StateObject private var audioSource = AudioSourceModel()
     @State private var allControlsHovered = false
 
@@ -124,14 +123,7 @@ struct MoreControls: View {
     private var allControlsLink: some View {
         Button {
             UserDefaults.standard.set("controls", forKey: "settingsTab")
-            openWindow(id: "settings")
-            NSApp.activate(ignoringOtherApps: true)
-            DispatchQueue.main.async {
-                for window in NSApp.windows where window.title.contains("Settings") {
-                    window.makeKeyAndOrderFront(nil)
-                    window.orderFrontRegardless()
-                }
-            }
+            SettingsWindow.open()
         } label: {
             HStack(spacing: 4) {
                 Text("All controls…")

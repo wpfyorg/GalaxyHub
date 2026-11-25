@@ -5,7 +5,6 @@ import BudsKit
 struct MenuView: View {
     @ObservedObject var model: AppModel
     @ObservedObject private var buds: BudsController
-    @Environment(\.openWindow) private var openWindow
     @AppStorage("moreExpanded") private var moreExpanded = false
     @State private var devices: [(address: String, name: String, model: DeviceModel?, connected: Bool)] = []
     @State private var selectedAddress = ""
@@ -407,14 +406,7 @@ struct MenuView: View {
     }
 
     private func openSettings() {
-        openWindow(id: "settings")
-        NSApp.activate(ignoringOtherApps: true)
-        DispatchQueue.main.async {
-            for window in NSApp.windows where window.title.contains("Settings") {
-                window.makeKeyAndOrderFront(nil)
-                window.orderFrontRegardless()
-            }
-        }
+        SettingsWindow.open()
     }
 }
 

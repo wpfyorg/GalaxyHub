@@ -8,31 +8,30 @@ struct BudsHubApp: App {
     @StateObject private var model = AppModel.shared
 
     var body: some Scene {
-        MenuBarExtra {
-            MenuView(model: model)
-        } label: {
-            MenuBarLabel(controller: model.controller)
-        }
-        .menuBarExtraStyle(.window)
-
-        Window("Buds Hub Settings", id: "settings") {
+        Settings {
             SettingsView(model: model)
         }
-        .windowResizability(.contentSize)
-        .windowToolbarStyle(.unified)
-        .defaultSize(width: 600, height: 620)
-        .defaultPosition(.center)
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var previewWindow: NSWindow?
+    private var statusItemController: StatusItemController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         AppModel.shared.start()
+        let status = StatusItemController(model: AppModel.shared)
+        statusItemController = status
+        SettingsWindow.popover = status
         if CommandLine.arguments.contains("--preview") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { self.showPreview() }
+        }
+        if CommandLine.arguments.contains("--open-popover") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { status.show() }
+        }
+        if CommandLine.arguments.contains("--open-settings") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { SettingsWindow.open() }
         }
     }
 
@@ -54,17 +53,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         NSApp.activate(ignoringOtherApps: true)
         return true
-    }
-}
-
-private struct MenuBarLabel: View {
-    @ObservedObject var controller: BudsController
-    @AppStorage("menuBarBattery") private var showBattery = true
-
-    var body: some View {
-        Image(nsImage: MenuBarIcon.image(
-            level: controller.link == .connected && showBattery ? controller.batteryMin : nil,
-            connected: controller.link == .connected
-        ))
     }
 }
