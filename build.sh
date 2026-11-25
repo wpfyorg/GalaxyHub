@@ -11,8 +11,18 @@ if [[ "$DEVELOPER_DIR_PATH" == *"CommandLineTools"* ]] && [[ -d /Library/Develop
     export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk
 fi
 
-echo "Building BudsHub…"
-swift build -c release --product BudsHub
+# swiftc forwards the SDK to clang as --sysroot. clang then cannot infer the
+# SDK version and ld records the deployment target instead (LC_BUILD_VERSION
+# "sdk 14.0"), which puts macOS 26+ into legacy appearance mode. Pass the real
+# SDK version explicitly; the minimum stays the package's macOS 14 target.
+if [[ -n "${SDKROOT:-}" ]]; then
+    SDK_VERSION="$(plutil -extract Version raw "$SDKROOT/SDKSettings.plist" 2>/dev/null || true)"
+fi
+SDK_VERSION="${SDK_VERSION:-$(xcrun --sdk macosx --show-sdk-version)}"
+
+echo "Building BudsHub (SDK $SDK_VERSION)…"
+swift build -c release --product BudsHub \
+    -Xlinker -platform_version -Xlinker macos -Xlinker 14.0 -Xlinker "$SDK_VERSION"
 
 APP=build/BudsHub.app
 rm -rf "$APP"

@@ -106,6 +106,12 @@ swift build && swift test
 that SDK exists; otherwise it uses the default SDK. This is a CLT-only
 workaround — skip `SDKROOT` with full Xcode.
 
+Liquid Glass appearance is keyed off the SDK version recorded in the executable
+(`LC_BUILD_VERSION`). A plain `swift build`/`swift run` links without that
+version, so macOS treats the result as a macOS 14 app and keeps the legacy
+appearance. `build.sh` records the selected SDK and is the right path for
+visual checks; the bundled `.app` is the rendered result.
+
 ## How it works
 
 1. Open the Samsung SPP service `2e73a4ad-332d-41fc-90e2-16bef06523f2`
