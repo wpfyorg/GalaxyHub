@@ -83,15 +83,13 @@ extension View {
         }
     }
 
-    @ViewBuilder
-    func roundedRectGlass(cornerRadius: CGFloat) -> some View {
-        if #available(macOS 26.0, *) {
-            self.glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
-        } else {
-            self
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
-                .overlay(RoundedRectangle(cornerRadius: cornerRadius).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
-        }
+    /// A quiet, translucent surface for grouped content inside the popover.
+    /// It uses a system material instead of a second `glassEffect` layer so
+    /// the popover's glass stays visible and the content remains legible.
+    func insetSurface(cornerRadius: CGFloat = 12) -> some View {
+        self
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
+            .overlay(RoundedRectangle(cornerRadius: cornerRadius).strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5))
     }
 }
 
@@ -117,7 +115,7 @@ struct Card<Content: View>: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.05)))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5))
     }
 }

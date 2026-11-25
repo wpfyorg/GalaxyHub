@@ -24,7 +24,7 @@ struct LiquidSegmented<Item: Hashable & Identifiable, Content: View>: View {
         }
         .background { if let selection { pill(following: selection) } }
         .padding(3)
-        .background(Capsule().fill(Color.primary.opacity(0.07)))
+        .background(.ultraThinMaterial, in: Capsule())
         .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
         .animation(.spring(response: 0.42, dampingFraction: 0.72), value: selection)
         .animation(.easeOut(duration: 0.15), value: hovered)
@@ -51,6 +51,7 @@ struct LiquidSegmented<Item: Hashable & Identifiable, Content: View>: View {
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityAddTraits(selected ? .isSelected : [])
             .onHover { inside in
                 if inside { hovered = item } else if hovered == item { hovered = nil }
             }

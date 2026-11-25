@@ -85,27 +85,29 @@ private struct HUDView: View {
     let tinted: Bool
 
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: symbol)
-                .font(.system(size: 24, weight: .medium))
-                .frame(width: 44, height: 44)
-                .tintedCircleGlass(tinted ? .accentColor : nil)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.headline)
-                HStack(spacing: 6) {
-                    Text(subtitle)
-                    if let battery {
-                        Text("·")
-                        Text("\(battery)%")
+        GlassBox(spacing: 14) {
+            HStack(spacing: 14) {
+                Image(systemName: symbol)
+                    .font(.system(size: 24, weight: .medium))
+                    .frame(width: 44, height: 44)
+                    .tintedCircleGlass(tinted ? .accentColor : nil)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.headline)
+                    HStack(spacing: 6) {
+                        Text(subtitle)
+                        if let battery {
+                            Text("·")
+                            Text("\(battery)%")
+                        }
                     }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                 }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
             }
+            .padding(.leading, 12)
+            .padding(.trailing, 24)
+            .padding(.vertical, 12)
         }
-        .padding(.leading, 12)
-        .padding(.trailing, 24)
-        .padding(.vertical, 12)
         .capsuleGlass()
         .padding(20)
     }

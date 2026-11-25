@@ -48,7 +48,22 @@ struct MenuView: View {
         .animation(.spring(response: 0.42, dampingFraction: 0.74), value: buds.noiseMode)
         .animation(.snappy(duration: 0.22), value: buds.link)
         .animation(.spring(response: 0.38, dampingFraction: 0.82), value: moreExpanded)
-        .task { refreshDevices() }
+        .task {
+            if needsDeviceList { refreshDevices() }
+        }
+        .onChange(of: buds.link) { _, _ in
+            if needsDeviceList { refreshDevices() }
+        }
+    }
+
+    /// The device picker only exists while no link is being opened, so a
+    /// connected or connecting popover never touches Bluetooth (or prompts
+    /// for access) just to draw.
+    private var needsDeviceList: Bool {
+        switch buds.link {
+        case .idle, .failed: return true
+        case .connecting, .connected: return false
+        }
     }
 
     // MARK: Header
@@ -139,43 +154,63 @@ struct MenuView: View {
 
     private var noiseControls: some View {
         VStack(spacing: 8) {
-            LiquidSegmented(items: buds.availableNoiseModes, selection: buds.noiseMode,
-                            height: 28,
-                            onSelect: { buds.setNoiseMode($0) }) { mode, selected in
-                HStack(spacing: 5) {
-                    Image(systemName: mode.symbol)
-                        .font(.system(size: 13, weight: .semibold))
-                        .symbolEffect(.bounce, value: selected)
-                    if selected {
-                        Text(mode.shortTitle)
-                            .font(.system(size: 13, weight: .semibold))
-                            .lineLimit(1)
-                            .fixedSize()
-                            .transition(.scale(scale: 0.6).combined(with: .opacity))
-                    }
-                }
-                .foregroundStyle(selected ? Color.primary : Color.secondary)
-                .help(mode.title)
-                .accessibilityLabel(mode.title)
-            } widthFor: { _, selected in selected ? nil : 42 }
+            noiseModeControl
 
             if buds.noiseMode == .anc, buds.has(.ancLevel) {
-                LiquidSegmented(items: LevelChoice.allCases,
-                                selection: buds.ancLevelHigh ? .high : .low,
-                                height: 20,
-                                onSelect: { buds.setANCLevelHigh($0 == .high) }, label: { choice, selected in
-                    Text(choice == .high ? "High" : "Low")
-                        .font(.system(size: 12, weight: selected ? .semibold : .medium))
-                        .foregroundStyle(selected ? Color.primary : Color.secondary)
-                }, fitToLabels: true)
-                .frame(height: 26)
-                .transition(.blurReplace)
+                ancLevelControl
+                    .transition(.blurReplace)
             }
 
             if buds.noiseMode == .ambient, buds.has(.ambientVolume), buds.model?.ambientVolumeMax ?? 0 > 0 {
                 ambientSlider
             }
         }
+    }
+
+    /// The icon-first segmented control is the product design: unselected
+    /// modes stay icon-only, the selected mode expands to icon plus label, and
+    /// the pill glides between them. A native `Picker` was prototyped and
+    /// dropped because it lost that hierarchy and added an accent-filled
+    /// segment that does not match the popover.
+    private var noiseModeControl: some View {
+        LiquidSegmented(items: buds.availableNoiseModes, selection: buds.noiseMode,
+                        height: 28,
+                        onSelect: { mode in
+                            guard mode != buds.noiseMode else { return }
+                            buds.setNoiseMode(mode)
+                        }) { mode, selected in
+            HStack(spacing: 5) {
+                Image(systemName: mode.symbol)
+                    .font(.system(size: 13, weight: .semibold))
+                    .symbolEffect(.bounce, value: selected)
+                if selected {
+                    Text(mode.shortTitle)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                        .fixedSize()
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                }
+            }
+            .foregroundStyle(selected ? Color.primary : Color.secondary)
+            .help(mode.title)
+            .accessibilityLabel(mode.title)
+        } widthFor: { _, selected in selected ? nil : 42 }
+    }
+
+    private var ancLevelControl: some View {
+        LiquidSegmented(items: LevelChoice.allCases,
+                        selection: buds.ancLevelHigh ? .high : .low,
+                        height: 20,
+                        onSelect: { choice in
+                            let high = choice == .high
+                            guard high != buds.ancLevelHigh else { return }
+                            buds.setANCLevelHigh(high)
+                        }, label: { choice, selected in
+            Text(choice == .high ? "High" : "Low")
+                .font(.system(size: 12, weight: selected ? .semibold : .medium))
+                .foregroundStyle(selected ? Color.primary : Color.secondary)
+        }, fitToLabels: true)
+        .frame(height: 26)
     }
 
     private var ambientSlider: some View {
@@ -200,10 +235,10 @@ struct MenuView: View {
     private var batteries: some View {
         HStack(spacing: 0) {
             BatteryCell(side: "L", battery: buds.leftBattery, placement: buds.placementLeft,
-                        symbol: "earbuds")
+                        symbol: leftEarbudSymbol)
             Spacer(minLength: 0)
             BatteryCell(side: "R", battery: buds.rightBattery, placement: buds.placementRight,
-                        symbol: "earbuds")
+                        symbol: rightEarbudSymbol)
             if buds.has(.caseBattery) {
                 Spacer(minLength: 0)
                 BatteryCell(side: "Case", battery: buds.caseBattery, placement: nil,
@@ -212,6 +247,18 @@ struct MenuView: View {
         }
         .frame(height: 24)
         .padding(.horizontal, 6)
+    }
+
+    /// `earbud.left` and `earbud.right` arrived with SF Symbols 2025
+    /// (macOS 26). Earlier systems keep the shared earbuds glyph.
+    private var leftEarbudSymbol: String {
+        if #available(macOS 26.0, *) { return "earbud.left" }
+        return "earbuds"
+    }
+
+    private var rightEarbudSymbol: String {
+        if #available(macOS 26.0, *) { return "earbud.right" }
+        return "earbuds"
     }
 
     // MARK: Disconnected
@@ -226,7 +273,7 @@ struct MenuView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
-                .roundedRectGlass(cornerRadius: 14)
+                .insetSurface(cornerRadius: 14)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     if let error = buds.lastError, buds.link != .idle {
@@ -297,7 +344,7 @@ struct MenuView: View {
                 }
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .roundedRectGlass(cornerRadius: 14)
+                .insetSurface(cornerRadius: 14)
             }
 
             HStack(spacing: 12) {
