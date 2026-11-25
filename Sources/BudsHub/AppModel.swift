@@ -36,14 +36,17 @@ final class AppModel: ObservableObject {
     func start() {
         guard !started else { return }
         started = true
-        controller.start()
-        NowPlayingMonitor.shared.start(controller: controller)
-        reloadHotkeys()
         if CommandLine.arguments.contains("--demo") {
+            // Demo mode is also the visual-check path: never touch real
+            // Bluetooth or trigger the access prompt for a simulated device.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
                 self?.controller.connectDemo()
             }
+        } else {
+            controller.start()
         }
+        NowPlayingMonitor.shared.start(controller: controller)
+        reloadHotkeys()
     }
 
     func reloadHotkeys() {
